@@ -197,13 +197,17 @@ flowchart LR
 | 新增记录 | POST | `/api/v1/dailyRecords` | JWT |
 | 按日查询 | GET | `/api/v1/dailyRecords?date=yyyy-MM-dd` | JWT |
 | 导出 xlsx | GET | `/api/v1/dailyRecords/exportCsv?date=`（或 yearMonth / from+to） | JWT |
-| 创建分享 | POST | `/api/v1/shareReports`（筛选参数同上） | JWT |
-| 公开报告 | GET | `/api/v1/reports/{id}` | 公开 |
+| 创建分享 | POST | `/api/v1/shareReports`（筛选参数同上） | JWT；落库后异步 AI，不阻塞 |
+| 公开报告 | GET | `/api/v1/reports/{id}` | 公开；含 advice + adviceStatus |
 | 查询资料 | GET | `/api/v1/profile` | JWT |
 | 保存资料 | PUT | `/api/v1/profile` | JWT |
 | CMS 账户列表 | GET | `/api/v1/admin/accounts` | ADMIN JWT |
 | CMS 用户详情 | GET | `/api/v1/admin/accounts/{userId}` | ADMIN JWT |
 | CMS 已有分享 | GET | `/api/v1/admin/reports` | ADMIN JWT |
+| CMS API Key 列表 | GET | `/api/v1/admin/apiKeys` | ADMIN JWT |
+| CMS 单用户改 Key | PUT | `/api/v1/admin/apiKeys/{userId}` | ADMIN JWT |
+| CMS 批量改 Key | PUT | `/api/v1/admin/apiKeys/batch` | ADMIN JWT |
+| CMS AI 调用 | GET | `/api/v1/admin/aiCalls?userId=&apiKeyId=` | ADMIN JWT |
 
 ---
 

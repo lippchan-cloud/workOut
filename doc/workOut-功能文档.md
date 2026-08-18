@@ -34,7 +34,7 @@
 | 我的 | 二级三选项后再进身体资料或账号安全 | P0 |
 | 我的 | 身体资料含真实日期；页下方成长曲线（cm/kg、可拖、粒度缩放） | P0 |
 | 我的 | 身体资料变更写入历史 | P0 |
-| CMS | 管理员功能栏：概览、账户列表、用户详情、已有分享报告 | P0 |
+| CMS | 管理员功能栏：概览、账户列表、用户详情、已有分享报告、API Key、AI 调用 | P0 |
 | 启动 | CLI 启动前后端一体应用 | P0 |
 
 ---
@@ -54,12 +54,14 @@
 | 2c | 分享 | `/calendar/share` | 二级页：按筛选 POST 分享、展示链接与复制、返回日历 |
 | 3 | 我的 | `/profile` | 二级三选项；需登录 |
 | 3a | 身体资料 | `/profile/body` | 昵称/身高/体重/资料真实日期 + 下方成长曲线 |
-| — | 公开报告 | `/report/:id` | 独立页（无三 Tab）：用户名称、事项列表、成长曲线、建议分析空态；可回首页 `/` |
+| — | 公开报告 | `/report/:id` | 独立页（无三 Tab）：用户名称、事项列表、成长曲线、建议分析（AI 异步）；可回首页 `/` |
 | 3b | 账号安全 | `/profile/account` | 改密/注销；ADMIN 可见「后台管理」→ `/cms` |
 | — | CMS 概览 | `/cms` | 独立页（无三 Tab）；顶栏功能栏；账户数/分享数 |
 | — | CMS 账户 | `/cms/accounts` | 全站账户表；点用户名进详情 |
 | — | CMS 用户详情 | `/cms/users/:userId` | 资料 + 最近记录 + 已有分享链接 |
 | — | CMS 报告 | `/cms/reports` | 已有分享列表；打开公开 `/report/:id` |
+| — | CMS API Key | `/cms/api-keys` | 单用户/批量绑定 DeepSeek Key（掩码展示） |
+| — | CMS AI 调用 | `/cms/ai-calls` | 调用日志；可按 userId、apiKeyId 筛选 |
 
 切换 Tab 不丢未提交表单时，需提示或自动保留输入草稿（建议：离开记录页前提示未保存内容）。  
 未登录状态下点 Tab：不进入业务页内容加载，直接跳转 `/login?redirect=<目标路径>`。
@@ -322,7 +324,7 @@
 
 前端路由：`/report/:id`（React Router 路径参数，比字面 `/report/id=233232` 更自然；语义等同「按 id 打开报告」）。独立页，不走底部三 Tab。提供「回首页」到 `/`。
 
-报告内容上下排列：① 用户名称 ② 事项列表 ③ 成长曲线 ④ 建议分析（空态占位，不做真实医疗建议）。展示数据范围 `from`～`to`。事项列表时间与内容分行（或左时间右内容且有足够间距），消耗绿、摄入红。
+报告内容上下排列：① 用户名称 ② 事项列表 ③ 成长曲线 ④ 建议分析（DeepSeek 异步生成；`adviceStatus` 为 NONE_KEY / PENDING / READY / FAILED；文案可含「仅供参考」，不做真实医疗诊断）。展示数据范围 `from`～`to`。事项列表时间与内容分行（或左时间右内容且有足够间距），消耗绿、摄入红。
 
 ---
 
@@ -377,6 +379,8 @@
 | 账户列表 | `/cms/accounts` | 用户ID、用户名、创建时间、昵称、身高、体重；用户名链到详情 |
 | 用户详情 | `/cms/users/:userId` | 用户名、角色、创建时间、昵称、身高、体重、记录条数与最近若干条；该用户已有分享链到 `/report/:id`。`/cms/users` 空态提示从账户列表选择 |
 | 报告 | `/cms/reports` | 列出已有分享（token、userId、用户名、from、to、createdAt），新窗口打开公开报告 |
+| API Key | `/cms/api-keys` | 单用户改 Key、批量改 Key；列表仅掩码 |
+| AI 调用 | `/cms/ai-calls` | 调用情况列表；筛选 userId / apiKeyId |
 
 CMS **不得**用管理员身份代用户创建分享或改写快照。身份只信 JWT；列表与详情禁止 N+1。
 
@@ -432,7 +436,8 @@ CMS **不得**用管理员身份代用户创建分享或改写快照。身份只
 | token | 公开 id（随机，非自增） |
 | userId | 创建者 |
 | from / to | 筛选范围 |
-| snapshotJson | 显示名、事项、曲线点、advice 占位 |
+| snapshotJson | 显示名、事项、曲线点、advice / adviceStatus |
+| adviceStatus | NONE_KEY / PENDING / READY / FAILED |
 | createdAt | 创建时间 |
 
 ---
@@ -516,7 +521,7 @@ data：`{ id, url }`。`url` = `{WORKOUT_PUBLIC_BASE_URL}/report/{id}`。缺身�
 
 `GET /api/v1/reports/{id}`
 
-data：`{ from, to, displayName, records, bodyHistory, advice }`。`advice` 为空占位。未知 token：404「报告不存在」。
+data：`{ from, to, displayName, records, bodyHistory, advice, adviceStatus }`。`adviceStatus`：`NONE_KEY`（未配置 API Key）/ `PENDING`（生成中）/ `READY`（AI 文案）/ `FAILED`（限流或调用失败）。未知 token：404「报告不存在」。
 
 ### 8.6 查询个人资料（需登录）
 

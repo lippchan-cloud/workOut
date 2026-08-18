@@ -76,6 +76,12 @@ function stubAdminApis() {
       if (url.includes("/api/v1/admin/accounts")) {
         return jsonOk({ list: [account] });
       }
+      if (url.includes("/api/v1/admin/apiKeys")) {
+        return jsonOk({ list: [] });
+      }
+      if (url.includes("/api/v1/admin/aiCalls")) {
+        return jsonOk({ list: [] });
+      }
       return jsonOk({ list: [] });
     }),
   );
@@ -92,9 +98,14 @@ describe("CmsPage", () => {
     expect(await screen.findByTestId("location")).toHaveTextContent("/login?redirect=/cms");
   });
 
-  it("redirects anonymous CMS reports visitors to login", async () => {
-    renderAt("/cms/reports");
-    expect(await screen.findByTestId("location")).toHaveTextContent("/login?redirect=/cms/reports");
+  it("redirects anonymous CMS ai-calls visitors to login", async () => {
+    renderAt("/cms/ai-calls");
+    expect(await screen.findByTestId("location")).toHaveTextContent("/login?redirect=/cms/ai-calls");
+  });
+
+  it("redirects anonymous CMS api-keys visitors to login", async () => {
+    renderAt("/cms/api-keys");
+    expect(await screen.findByTestId("location")).toHaveTextContent("/login?redirect=/cms/api-keys");
   });
 
   it("login page has no anonymous CMS entry", () => {
@@ -133,6 +144,8 @@ describe("CmsPage", () => {
     expect(screen.getByRole("link", { name: "账户列表" })).toHaveAttribute("href", "/cms/accounts");
     expect(screen.getByRole("link", { name: "用户详情" })).toHaveAttribute("href", "/cms/users");
     expect(screen.getByRole("link", { name: "报告" })).toHaveAttribute("href", "/cms/reports");
+    expect(screen.getByRole("link", { name: "API Key" })).toHaveAttribute("href", "/cms/api-keys");
+    expect(screen.getByRole("link", { name: "AI 调用" })).toHaveAttribute("href", "/cms/ai-calls");
     expect(screen.getByRole("link", { name: "账户列表" })).toHaveAttribute("aria-current", "page");
     expect(screen.queryByRole("navigation", { name: "主导航" })).not.toBeInTheDocument();
   });
