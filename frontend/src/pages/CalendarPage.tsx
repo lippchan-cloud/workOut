@@ -56,51 +56,60 @@ export function CalendarPage() {
   };
 
   return (
-    <div>
-      <h1>日历</h1>
-      <div>
-        <button type="button" onClick={() => setAnchor(addWeeks(anchor, -1))}>
-          上一周
-        </button>
-        <button type="button" onClick={() => setAnchor(addWeeks(anchor, 1))}>
-          下一周
+    <div className="page">
+      <p className="page__eyebrow">Week</p>
+      <h1 className="page__title">日历</h1>
+      <p className="page__subtitle">按周回看 · 选日导出</p>
+
+      <div className="card stack">
+        <div className="week-toolbar">
+          <button type="button" className="btn btn-ghost" onClick={() => setAnchor(addWeeks(anchor, -1))}>
+            上一周
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => setAnchor(addWeeks(anchor, 1))}>
+            下一周
+          </button>
+        </div>
+
+        <div className="week-strip" role="list" aria-label="周条">
+          {week.map((day) => {
+            const ymd = formatYmd(day);
+            const isToday = ymd === formatYmd(today);
+            return (
+              <button
+                key={ymd}
+                type="button"
+                className={`week-day${isToday ? " week-day--today" : ""}`}
+                aria-pressed={selected === ymd}
+                onClick={() => setSelected(ymd)}
+              >
+                {ymd.slice(5)}
+                {isToday ? " 今" : ""}
+              </button>
+            );
+          })}
+        </div>
+
+        {list.length === 0 ? (
+          <p className="empty-state">这一天还没有记录</p>
+        ) : (
+          <ul className="record-list">
+            {list.map((item) => (
+              <li
+                key={item.id}
+                className={item.type === "CONSUME" ? "record-consume" : "record-intake"}
+                style={{ color: item.type === "CONSUME" ? "#16A34A" : "#DC2626" }}
+              >
+                {item.content}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <button type="button" className="btn btn-primary btn-block" onClick={onExport}>
+          导出 CSV
         </button>
       </div>
-      <div role="list" aria-label="周条">
-        {week.map((day) => {
-          const ymd = formatYmd(day);
-          const isToday = ymd === formatYmd(today);
-          return (
-            <button
-              key={ymd}
-              type="button"
-              aria-pressed={selected === ymd}
-              onClick={() => setSelected(ymd)}
-            >
-              {ymd.slice(5)}
-              {isToday ? " 今" : ""}
-            </button>
-          );
-        })}
-      </div>
-      {list.length === 0 ? (
-        <p>这一天还没有记录</p>
-      ) : (
-        <ul>
-          {list.map((item) => (
-            <li
-              key={item.id}
-              className={item.type === "CONSUME" ? "record-consume" : "record-intake"}
-              style={{ color: item.type === "CONSUME" ? "#16A34A" : "#DC2626" }}
-            >
-              {item.content}
-            </li>
-          ))}
-        </ul>
-      )}
-      <button type="button" onClick={onExport}>
-        导出 CSV
-      </button>
     </div>
   );
 }

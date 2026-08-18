@@ -48,25 +48,31 @@ export function ProfilePage() {
   };
 
   return (
-    <div>
-      <h1>我的</h1>
-      <form onSubmit={onSubmit}>
+    <div className="page">
+      <p className="page__eyebrow">Athlete</p>
+      <h1 className="page__title">我的</h1>
+      <p className="page__subtitle">身体数据归档，保持轻量。</p>
+
+      <form className="card" onSubmit={onSubmit}>
         <label>
           昵称
-          <input value={nickname} onChange={(e) => setNickname(e.target.value)} />
+          <input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="怎么称呼你" />
         </label>
         <label>
-          身高
-          <input value={heightCm} onChange={(e) => setHeightCm(e.target.value)} />
+          身高 (cm)
+          <input value={heightCm} onChange={(e) => setHeightCm(e.target.value)} placeholder="例如 175" />
         </label>
         <label>
-          体重
-          <input value={weightKg} onChange={(e) => setWeightKg(e.target.value)} />
+          体重 (kg)
+          <input value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder="例如 70" />
         </label>
-        <button type="submit">保存资料</button>
+        <button type="submit" className="btn btn-primary btn-block">
+          保存资料
+        </button>
+        {message ? <p className="flash">{message}</p> : null}
       </form>
-      {message ? <p>{message}</p> : null}
-      <button type="button" onClick={onLogout}>
+
+      <button type="button" className="btn btn-ghost btn-block" onClick={onLogout}>
         退出登录
       </button>
     </div>

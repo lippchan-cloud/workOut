@@ -24,6 +24,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="app-shell">
+      <header className="app-shell__brand">
+        <div className="app-shell__logo">
+          <span className="app-shell__logo-mark" aria-hidden />
+          workOut
+        </div>
+        <span className="app-shell__tag">Train Log</span>
+      </header>
       <main className="app-shell__content">{children}</main>
       <nav className="app-shell__nav" aria-label="主导航">
         {TABS.map((tab) => (

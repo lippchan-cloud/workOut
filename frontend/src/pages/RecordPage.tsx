@@ -29,6 +29,7 @@ function RecordForm({
   const [content, setContent] = useState("");
   const [recordedAt, setRecordedAt] = useState(nowLocalInput);
   const [message, setMessage] = useState("");
+  const isConsume = type === "CONSUME";
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -51,18 +52,31 @@ function RecordForm({
   };
 
   return (
-    <form onSubmit={onSubmit} aria-label={title}>
+    <form
+      className={`card ${isConsume ? "card--consume" : "card--intake"}`}
+      onSubmit={onSubmit}
+      aria-label={title}
+    >
+      <span className={`card__badge ${isConsume ? "card__badge--consume" : "card__badge--intake"}`}>
+        {isConsume ? "Burn" : "Fuel"} · {title}
+      </span>
       <h2>{title}</h2>
       <label>
         {contentLabel}
-        <textarea value={content} onChange={(e) => setContent(e.target.value)} />
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder={isConsume ? "例如：跑步 30 分钟" : "例如：鸡胸肉一份"}
+        />
       </label>
       <label>
         记录时间
         <input type="datetime-local" value={recordedAt} onChange={(e) => setRecordedAt(e.target.value)} />
       </label>
-      <button type="submit">{saveLabel}</button>
-      {message ? <p>{message}</p> : null}
+      <button type="submit" className={`btn ${isConsume ? "btn-consume" : "btn-intake"} btn-block`}>
+        {saveLabel}
+      </button>
+      {message ? <p className="flash">{message}</p> : null}
     </form>
   );
 }
@@ -73,10 +87,14 @@ function RecordForm({
 export function RecordPage() {
   const defaults = useMemo(() => nowLocalInput(), []);
   return (
-    <div>
-      <h1>记录</h1>
-      <RecordForm type="CONSUME" title="当日消耗" contentLabel="消耗内容" saveLabel="保存消耗" />
-      <RecordForm type="INTAKE" title="当日摄入" contentLabel="摄入内容" saveLabel="保存摄入" />
+    <div className="page">
+      <p className="page__eyebrow">Today</p>
+      <h1 className="page__title">记录</h1>
+      <p className="page__subtitle">一条一事，绿耗红食，马上开练。</p>
+      <div className="stack">
+        <RecordForm type="CONSUME" title="当日消耗" contentLabel="消耗内容" saveLabel="保存消耗" />
+        <RecordForm type="INTAKE" title="当日摄入" contentLabel="摄入内容" saveLabel="保存摄入" />
+      </div>
       <p hidden>{defaults}</p>
     </div>
   );

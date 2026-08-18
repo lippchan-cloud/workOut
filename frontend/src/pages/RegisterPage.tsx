@@ -33,30 +33,42 @@ export function RegisterPage() {
   };
 
   return (
-    <div data-testid="register-page">
-      <h1>注册</h1>
-      <form onSubmit={onSubmit}>
-        <label>
-          用户名
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-          />
-        </label>
-        <label>
-          密码
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-          />
-        </label>
-        {error ? <p role="alert">{error}</p> : null}
-        <button type="submit">注册</button>
-      </form>
-      <Link to="/login">去登录</Link>
+    <div className="auth-page" data-testid="register-page">
+      <div className="auth-card">
+        <div className="auth-card__brand">
+          <span className="app-shell__logo-mark" aria-hidden />
+          workOut
+        </div>
+        <p className="page__eyebrow">Join</p>
+        <h1>注册</h1>
+        <p className="page__subtitle">30 秒建号，马上开始记录。</p>
+        <form onSubmit={onSubmit}>
+          <label>
+            用户名
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+            />
+          </label>
+          <label>
+            密码
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+            />
+          </label>
+          {error ? <p role="alert">{error}</p> : null}
+          <button type="submit" className="btn btn-primary btn-block">
+            注册
+          </button>
+        </form>
+        <p className="auth-card__footer">
+          已有账号？ <Link to="/login">去登录</Link>
+        </p>
+      </div>
     </div>
   );
 }
