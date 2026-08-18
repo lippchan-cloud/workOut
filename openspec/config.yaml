@@ -27,3 +27,5 @@ rules:
     - Every implementation task MUST include a TDD cycle: write failing test, run fail, implement, run pass
     - Prefer backend API/service tests first; UI tests for auth guard and critical pages
     - No production code task without naming the test file/class
+    - Checkbox requires evidence in doc/workOut-TDD验证记录.md (RED+GREEN command summaries); see doc/workOut-TDD规范.md
+    - TDD means verified red-green, not merely adding test classes

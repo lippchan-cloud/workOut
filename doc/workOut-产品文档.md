@@ -9,7 +9,8 @@
 | 依据 | `workOut/README.md` |
 | 文档用途 | 对齐产品定位、用户价值、范围边界与验收口径 |
 | 配套文档 | [workOut-功能文档.md](./workOut-功能文档.md)、[workOut-技术架构.md](./workOut-技术架构.md) |
-| 实现规格 | OpenSpec change [`init-workout-mvp`](../openspec/changes/init-workout-mvp/proposal.md)（proposal / specs / design / tasks，TDD） |
+| 实现规格 | OpenSpec change [`init-workout-mvp`](../openspec/changes/init-workout-mvp/proposal.md)（proposal / specs / design / tasks） |
+| TDD | [TDD 规范](./workOut-TDD规范.md) · [TDD 验证记录](./workOut-TDD验证记录.md) |
 
 ---
 

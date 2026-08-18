@@ -30,8 +30,10 @@ JWT
 
 ## OpenSpec + TDD
 - 变更：[`openspec/changes/init-workout-mvp`](openspec/changes/init-workout-mvp/proposal.md)
-- 任务清单（含 TDD）：[`tasks.md`](openspec/changes/init-workout-mvp/tasks.md)
+- 任务清单：[`tasks.md`](openspec/changes/init-workout-mvp/tasks.md)
+- **TDD 规范（门禁）：** [`doc/workOut-TDD规范.md`](doc/workOut-TDD规范.md)
+- **TDD 验证台账（红绿证据）：** [`doc/workOut-TDD验证记录.md`](doc/workOut-TDD验证记录.md)
 - 实现计划索引：[`docs/superpowers/plans/2026-08-18-init-workout-mvp.md`](docs/superpowers/plans/2026-08-18-init-workout-mvp.md)
 - 校验：`openspec validate init-workout-mvp`
-- 实现时用 Cursor：`/opsx-apply`（文档阶段完成后）
+- 实现口令：按 TDD 规范执行 Task X.Y（先红留证 → 再绿留证 → 写台账 → 勾选 tasks）
 
