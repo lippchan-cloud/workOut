@@ -24,18 +24,30 @@ export function CalendarPage() {
   const today = new Date();
   const todayYmd = formatYmd(today);
   const dateParam = searchParams.get("date");
+  const yearMonthParam = searchParams.get("yearMonth");
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
   const initialSelected = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayYmd;
-  const [mode, setMode] = useState<FilterMode>("day");
+  const [mode, setMode] = useState<FilterMode>(() => {
+    if (yearMonthParam && /^\d{4}-\d{2}$/.test(yearMonthParam)) {
+      return "month";
+    }
+    if (fromParam && toParam) {
+      return "range";
+    }
+    return "day";
+  });
   const [anchor, setAnchor] = useState(() => parseYmd(initialSelected));
   const [selected, setSelected] = useState(initialSelected);
-  const [yearMonth, setYearMonth] = useState(formatYearMonth(today));
-  const [from, setFrom] = useState(todayYmd);
-  const [to, setTo] = useState(todayYmd);
+  const [yearMonth, setYearMonth] = useState(
+    yearMonthParam && /^\d{4}-\d{2}$/.test(yearMonthParam) ? yearMonthParam : formatYearMonth(today),
+  );
+  const [from, setFrom] = useState(fromParam && /^\d{4}-\d{2}-\d{2}$/.test(fromParam) ? fromParam : todayYmd);
+  const [to, setTo] = useState(toParam && /^\d{4}-\d{2}-\d{2}$/.test(toParam) ? toParam : todayYmd);
   const [list, setList] = useState<RecordItem[]>([]);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [reloadKey, setReloadKey] = useState(0);
   const [actionMessage, setActionMessage] = useState("");
-  const [shareUrl, setShareUrl] = useState("");
   const week = weekContaining(anchor);
   const weekStart = formatYmd(week[0]);
   const weekEnd = formatYmd(week[6]);
@@ -164,6 +176,16 @@ export function CalendarPage() {
     URL.revokeObjectURL(url);
   };
 
+  const shareQuery = () => {
+    if (mode === "month") {
+      return `yearMonth=${yearMonth}`;
+    }
+    if (mode === "range") {
+      return `from=${from}&to=${to}`;
+    }
+    return `date=${selected}`;
+  };
+
   const onShare = async () => {
     if (!isAuthenticated) {
       navigate("/login?redirect=/calendar");
@@ -172,27 +194,7 @@ export function CalendarPage() {
     if (!(await requireBodyOrRedirect())) {
       return;
     }
-    const token = localStorage.getItem("workout_token");
-    const exportQuery = mode === "day" ? `date=${selected}` : periodQuery();
-    const response = await fetch(`/api/v1/shareReports?${exportQuery}`, {
-      method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (response.status === 401) {
-      localStorage.removeItem("workout_token");
-      navigate("/login?redirect=/calendar");
-      return;
-    }
-    const body = await response.json();
-    if (!response.ok || body.code !== 200) {
-      setActionMessage(body.msg || "分享失败");
-      if (body.msg === "请先填写身高和体重") {
-        navigate("/profile/body");
-      }
-      return;
-    }
-    setShareUrl(body.data.url);
-    setActionMessage("");
+    navigate(`/calendar/share?${shareQuery()}`);
   };
 
   const openDetail = (item: RecordItem) => {
@@ -300,7 +302,7 @@ export function CalendarPage() {
         ) : null}
         {loadStatus === "success" && visibleList.length === 0 ? <p className="empty-state">{emptyMessage}</p> : null}
         {loadStatus === "success" && visibleList.length > 0 ? (
-          <ul className="record-list">
+          <ul className="record-list record-list--stacked">
             {visibleList.map((item) => (
               <li
                 key={item.id}
@@ -318,20 +320,15 @@ export function CalendarPage() {
           </ul>
         ) : null}
 
-        <div className="row">
-          <button type="button" className="btn btn-ghost" onClick={onShare}>
+        <div className="action-pair">
+          <button type="button" className="btn btn-ghost btn-block" onClick={onShare}>
             分享
           </button>
-          <button type="button" className="btn btn-primary btn-block" onClick={onExport}>
+          <button type="button" className="btn btn-ghost btn-block" onClick={onExport}>
             导出
           </button>
         </div>
         {actionMessage ? <p className="flash">{actionMessage}</p> : null}
-        {shareUrl ? (
-          <p className="flash">
-            分享链接：{shareUrl}
-          </p>
-        ) : null}
       </div>
     </div>
   );

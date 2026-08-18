@@ -131,6 +131,7 @@ describe("CalendarPage", () => {
     expect(intake.closest("li")).toHaveClass("record-intake");
     expect(consume.closest("li")).toHaveStyle({ color: "#16A34A" });
     expect(intake.closest("li")).toHaveStyle({ color: "#DC2626" });
+    expect(consume.closest("ul")).toHaveClass("record-list--stacked");
     expect(screen.getByText("07:30")).toBeInTheDocument();
     expect(screen.getByText("08:00")).toBeInTheDocument();
   });
@@ -387,5 +388,35 @@ describe("CalendarPage", () => {
     await user.click(await screen.findByRole("button", { name: "分享" }));
     expect(await screen.findByTestId("location")).toHaveTextContent("/profile/body");
     expect(fetchMock.mock.calls.every((call) => !String(call[0]).includes("shareReports"))).toBe(true);
+  });
+
+  it("share and export are equal-weight ghost blocks", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(emptyListResponse()));
+    renderCalendar();
+    const share = screen.getByRole("button", { name: "分享" });
+    const exportBtn = screen.getByRole("button", { name: "导出" });
+    expect(share).toHaveClass("btn-ghost");
+    expect(share).toHaveClass("btn-block");
+    expect(exportBtn).toHaveClass("btn-ghost");
+    expect(exportBtn).toHaveClass("btn-block");
+    expect(exportBtn).not.toHaveClass("btn-primary");
+  });
+
+  it("share opens secondary page without posting on the calendar home", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (String(url).includes("/api/v1/profile")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ code: 200, data: { nickname: "小明", heightCm: 175, weightKg: 70 } }),
+        };
+      }
+      return emptyListResponse();
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderCalendar("/calendar?date=2026-08-18");
+    await user.click(await screen.findByRole("button", { name: "分享" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent("/calendar/share?date=2026-08-18");
   });
 });

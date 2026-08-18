@@ -4,10 +4,10 @@
 | --- | --- |
 | 产品名称 | workOut |
 | 文档类型 | 技术架构 |
-| 文档版本 | v1.2 |
+| 文档版本 | v1.3 |
 | 日期 | 2026-08-18 |
 | 依据 | [workOut-产品文档.md](./workOut-产品文档.md)、[workOut-功能文档.md](./workOut-功能文档.md)、`README.md` |
-| 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/design.md) |
+| 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/design.md)、[`phase-6-share-export-demo`](../openspec/changes/phase-6-share-export-demo/) |
 
 ---
 
@@ -75,8 +75,10 @@ flowchart TB
 | `modules.auth.application` | `AuthService` 编排 |
 | `modules.auth.domain` | `AuthPrincipal` |
 | `modules.auth.infrastructure` | `UserEntity`/`UserRepository`、`JwtService`、`JwtAuthFilter` |
-| `modules.record.*` | 日记录 + CSV 导出（api / application / domain / infrastructure） |
-| `modules.profile.*` | 个人资料（api / application / infrastructure） |
+| `modules.record.*` | 日记录 + xlsx 导出（api / application / domain / infrastructure） |
+| `modules.profile.*` | 个人资料与身体历史（api / application / infrastructure） |
+| `modules.share.*` | 分享创建与公开报告（api / application / infrastructure） |
+| `bootstrap` | 非 test profile 演示种子（demo 账号） |
 
 业务 `userId` 只从 JWT 进入应用服务，禁止信任客户端传入身份。
 
@@ -114,8 +116,10 @@ flowchart TB
   Record --> IntakeForm["摄入表单"]
   Calendar --> WeekBar["周视图"]
   Calendar --> DayList["日列表"]
-  Calendar --> ExportBtn["导出 CSV"]
+  Calendar --> SharePage["分享二级页"]
+  Calendar --> ExportBtn["导出 xlsx"]
   Profile --> ProfileForm["昵称 / 身高 / 体重"]
+  Profile --> Curve["成长曲线"]
   Profile --> Logout["退出登录"]
 ```
 
@@ -129,29 +133,40 @@ flowchart LR
     C0["AuthController"]
     C1["DailyRecordController"]
     C2["ProfileController"]
+    C3["ShareReportController"]
+    C4["PublicReportController"]
   end
 
   subgraph Services
     S0["AuthService"]
     S1["DailyRecordService"]
     S2["ProfileService"]
-    S3["CsvExportService"]
+    S3["XlsxExportWriter"]
+    S4["ShareReportService"]
+    S5["DemoDataSeeder"]
   end
 
   subgraph Persistence
     T0[("work_out_user")]
     T1[("work_out_daily_record")]
     T2[("work_out_profile")]
+    T3[("work_out_profile_history")]
+    T4[("work_out_share_report")]
   end
 
   C0 --> S0
   C1 --> S1
   C1 --> S3
   C2 --> S2
+  C3 --> S4
+  C4 --> S4
+  S5 --> T0
   S0 --> T0
   S1 --> T1
   S3 --> T1
   S2 --> T2
+  S2 --> T3
+  S4 --> T4
   T1 -.->|user_id| T0
   T2 -.->|user_id| T0
 ```
@@ -161,6 +176,8 @@ flowchart LR
 | User | id, username, passwordHash, createdAt |
 | DailyRecord | id, **userId**, type(`CONSUME`/`INTAKE`), content, recordedAt, createdAt |
 | Profile | id, **userId**（唯一）, nickname, heightCm, weightKg, updatedAt |
+| ProfileHistory | id, **userId**, changedAt, nickname, heightCm, weightKg |
+| ShareReport | id, token, **userId**, rangeFrom, rangeTo, snapshotJson |
 
 ---
 
@@ -172,7 +189,9 @@ flowchart LR
 | 登录 | POST | `/api/v1/auth/login` | 公开 |
 | 新增记录 | POST | `/api/v1/dailyRecords` | JWT |
 | 按日查询 | GET | `/api/v1/dailyRecords?date=yyyy-MM-dd` | JWT |
-| 导出 CSV | GET | `/api/v1/dailyRecords/exportCsv?date=yyyy-MM-dd` | JWT |
+| 导出 xlsx | GET | `/api/v1/dailyRecords/exportCsv?date=`（或 yearMonth / from+to） | JWT |
+| 创建分享 | POST | `/api/v1/shareReports`（筛选参数同上） | JWT |
+| 公开报告 | GET | `/api/v1/reports/{id}` | 公开 |
 | 查询资料 | GET | `/api/v1/profile` | JWT |
 | 保存资料 | PUT | `/api/v1/profile` | JWT |
 
@@ -252,24 +271,27 @@ sequenceDiagram
   end
 ```
 
-### 5.3 按日导出 CSV
+### 5.3 按筛选导出 xlsx
 
 ```mermaid
 sequenceDiagram
   actor U as 用户
   participant C as 日历页 React
   participant A as API
-  participant S as CsvExportService
+  participant S as DailyRecordService
+  participant W as XlsxExportWriter
   participant DB as MySQL
 
-  U->>C: 点击「导出 CSV」
+  U->>C: 点击「导出」
   C->>A: GET .../exportCsv?date=... + Bearer
-  A->>S: 按当前 userId 组装 CSV
-  S->>DB: 按日查询
-  S->>S: UTF-8 BOM + 表头 + 行
-  A-->>C: 文件流 workout-YYYY-MM-DD.csv
-  C-->>U: 浏览器下载（空表则提示）
+  A->>S: 校验身高体重并按当前 userId 查区间
+  S->>DB: 一次查事项 + 一次查身体历史
+  S->>W: 双工作表：事项三列 + 曲线身高体重
+  A-->>C: 文件流 workout-....xlsx
+  C-->>U: 浏览器下载
 ```
+
+分享走日历二级页 `/calendar/share`，再 `POST /api/v1/shareReports`，不在日历主页内联贴链接。
 
 ### 5.4 保存个人资料
 
@@ -317,10 +339,12 @@ flowchart LR
   Shell --> Auth["登录 / 注册"]
   Auth --> Record["记录消耗/摄入"]
   Record --> Calendar["日历选日回看"]
-  Calendar --> Export["按日导出 CSV"]
+  Calendar --> Export["按筛选导出 xlsx"]
+  Calendar --> Share["分享二级页 H5"]
   Calendar --> Profile["我的：身高体重"]
   Profile --> Done(["MVP 闭环完成"])
   Export --> Done
+  Share --> Done
 ```
 
 ---
@@ -330,7 +354,8 @@ flowchart LR
 | 约束 | 说明 |
 | --- | --- |
 | 多账号隔离 | 所有业务读写必须带当前 `userId`；禁止客户端传 userId 覆盖 |
-| 鉴权 | JWT；公开仅 `/api/v1/auth/**`；业务 401 |
+| 鉴权 | JWT；公开 `/api/v1/auth/register|login`、`/api/v1/health`、`/api/v1/reports/**`；业务 401 |
+| 演示种子 | 非 test profile 启动时若无 `demo` 用户则写入约 ±90 天数据；`saveAll` 批量，禁止 N+1 |
 | 密码 | 仅存哈希；错误登录统一文案 |
 | 时区 | 默认 `Asia/Shanghai`；自然日按本地时区切分 |
 | 本期写策略 | 记录只新增，不改不删 |

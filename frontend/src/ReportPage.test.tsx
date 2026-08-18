@@ -41,5 +41,9 @@ describe("public report page", () => {
     expect(screen.getByRole("heading", { name: "建议分析" })).toBeInTheDocument();
     expect(screen.getByText("建议分析（即将提供）")).toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "主导航" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "回首页" })).toHaveAttribute("href", "/");
+    const row = screen.getByText("跑步").closest("li");
+    expect(row).toHaveClass("record-consume");
+    expect(row?.closest("ul")).toHaveClass("record-list--stacked");
   });
 });

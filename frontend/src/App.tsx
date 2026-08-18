@@ -9,6 +9,7 @@ import { ProfileAccountPage, ProfileBodyPage, ProfilePage } from "./pages/Profil
 import { RecordDetailPage } from "./pages/RecordDetailPage";
 import { CmsPage } from "./pages/CmsPage";
 import { ReportPage } from "./pages/ReportPage";
+import { SharePage } from "./pages/SharePage";
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
                 <Route path="/record/consume" element={<RecordFormPage type="CONSUME" />} />
                 <Route path="/record/intake" element={<RecordFormPage type="INTAKE" />} />
                 <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/calendar/share" element={<SharePage />} />
                 <Route path="/calendar/trends" element={<Navigate to="/profile/body" replace />} />
                 <Route path="/calendar/records/:id" element={<RecordDetailPage />} />
                 <Route path="/profile" element={<ProfilePage />} />

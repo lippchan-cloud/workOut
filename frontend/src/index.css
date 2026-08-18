@@ -371,6 +371,32 @@ button {
   margin-top: 0.75rem;
 }
 
+.action-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+}
+
+.action-pair .btn-block {
+  margin-top: 0;
+}
+
+.trend-zoom {
+  min-width: 2.75rem;
+  padding: 0.45rem 0.7rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.share-url {
+  margin: 0;
+  word-break: break-all;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
 .btn-record-hero {
   width: 100%;
   min-height: 8.75rem;
@@ -653,19 +679,31 @@ button {
   padding: 0.75rem 0.85rem;
   cursor: pointer;
   display: flex;
-  gap: 0.75rem;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
 }
 
 .record-list__time {
   flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
-  opacity: 0.78;
-  font-size: 0.85rem;
+  opacity: 0.72;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
 }
 
 .record-list__content {
   flex: 1 1 auto;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.record-list--stacked > li:not(:has(.record-list__open)) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  padding: 0.75rem 0.85rem;
 }
 
 .trend-chart {

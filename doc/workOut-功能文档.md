@@ -4,12 +4,12 @@
 | --- | --- |
 | 产品名称 | workOut |
 | 文档类型 | 功能文档 |
-| 文档版本 | v1.4 |
+| 文档版本 | v1.5 |
 | 日期 | 2026-08-18 |
 | 依据 | `workOut/README.md`、[workOut-产品文档.md](./workOut-产品文档.md) |
 | 文档用途 | 作为前后端实现、联调与测试的功能规格 |
 | 配套文档 | [workOut-技术架构.md](./workOut-技术架构.md) |
-| 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/)、[`phase-3-ui-hierarchy`](../openspec/changes/phase-3-ui-hierarchy/)、[`phase-4-month-csv-body-history-curves`](../openspec/changes/phase-4-month-csv-body-history-curves/)、[`phase-5-share-report-curve-xlsx`](../openspec/changes/phase-5-share-report-curve-xlsx/) |
+| 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/)、[`phase-3-ui-hierarchy`](../openspec/changes/phase-3-ui-hierarchy/)、[`phase-4-month-csv-body-history-curves`](../openspec/changes/phase-4-month-csv-body-history-curves/)、[`phase-5-share-report-curve-xlsx`](../openspec/changes/phase-5-share-report-curve-xlsx/)、[`phase-6-share-export-demo`](../openspec/changes/phase-6-share-export-demo/) |
 
 ---
 
@@ -28,9 +28,9 @@
 | 日历 | 按周展示，默认选中今日；周切换为小控件 | P0 |
 | 日历 | 选中日期后展示当天记录列表；有记录格子显示条数气泡 | P0 |
 | 日历 | 点列表项进入事项详情；详情可编辑/删除 | P0 |
-| 日历 | 列表按时间正序并展示时分；消耗绿色、摄入红色 | P0 |
-| 日历 | 按当前筛选导出 xlsx（事项列表 + 成长曲线；须身高体重） | P0 |
-| 日历 | 分享 H5 只读报告（同范围、同闸门） | P0 |
+| 日历 | 列表按时间正序并展示时分；时间与内容分行；消耗绿色、摄入红色 | P0 |
+| 日历 | 按当前筛选导出 xlsx（事项无身体列；曲线 sheet 有身高体重；须身高体重） | P0 |
+| 日历 | 分享与导出同级；分享进入 `/calendar/share` 二级页再生成 H5 | P0 |
 | 我的 | 二级三选项后再进身体资料或账号安全 | P0 |
 | 我的 | 身体资料含真实日期；页下方成长曲线（cm/kg、可拖、粒度缩放） | P0 |
 | 我的 | 身体资料变更写入历史 | P0 |
@@ -47,12 +47,13 @@
 | — | 登录 | `/login` | 用户名 + 密码；成功后按 `redirect` 回跳 |
 | — | 注册 | `/register` | 用户名 + 密码；成功后登录或引导登录 |
 | 1 | 记录 | `/` 或 `/record` | 一级大按钮 → 二级选类型 → 三级表单；需登录 |
-| 2 | 日历 | `/calendar` | 周视图（小周切换 + hover + 气泡）+ 日/月列表（含时分）+ 导出 / 分享；需登录 |
+| 2 | 日历 | `/calendar` | 周视图（小周切换 + hover + 气泡）+ 日/月列表（时间与内容分行）+ 同级分享/导出；需登录 |
 | 2a | 事项详情 | `/calendar/records/:id` | 只读详情 + 编辑/删除；刷新走 GET by id |
 | 2b | （兼容） | `/calendar/trends` | 重定向到 `/profile/body`，日历主路径不再放曲线 |
+| 2c | 分享 | `/calendar/share` | 二级页：按筛选 POST 分享、展示链接与复制、返回日历 |
 | 3 | 我的 | `/profile` | 二级三选项；需登录 |
 | 3a | 身体资料 | `/profile/body` | 昵称/身高/体重/资料真实日期 + 下方成长曲线 |
-| — | 公开报告 | `/report/:id` | 独立页（无三 Tab）：用户名称、事项列表、成长曲线、建议分析空态 |
+| — | 公开报告 | `/report/:id` | 独立页（无三 Tab）：用户名称、事项列表、成长曲线、建议分析空态；可回首页 `/` |
 | 3b | 账号安全 | `/profile/account` | 改密/注销；ADMIN 可见 CMS |
 
 切换 Tab 不丢未提交表单时，需提示或自动保留输入草稿（建议：离开记录页前提示未保存内容）。  
@@ -228,7 +229,7 @@
 | 排序 | 按记录时间正序（早 → 晚）；同一时间按写入先后（id 升序） |
 | 消耗展示 | 绿色 |
 | 摄入展示 | 红色 |
-| 列表项内容 | 时间（HH:mm）+ 类型文案 + 内容文本；整行可点进详情 |
+| 列表项内容 | 时间（HH:mm）与内容分行（或左时间右内容且有足够间距）；整行可点进详情 |
 | 空列表 | 展示「这一天还没有记录」 |
 | 改删入口 | 不在列表上直接改删；进入 `/calendar/records/{id}` 后再编辑/删除 |
 
@@ -277,11 +278,8 @@
 | 记录时间 | 上海时区 `yyyy-MM-dd HH:mm:ss` | 2026-08-18 07:30:00 |
 | 类型 | 消耗 / 摄入 | 消耗 |
 | 内容 | 用户原文 | 跑步 30 分钟 |
-| 昵称 | 该条 `recordedAt` 当时有效的资料快照 | 小明 |
-| 身高cm | 当时身高；无匹配历史则空 | 175 |
-| 体重kg | 当时体重；无匹配历史则空 | 70 |
 
-「当时有效」= 该用户历史中 `changedAt <= recordedAt` 的最后一条快照。禁止用当前资料覆盖更早事项。导出时一次加载该用户历史再内存匹配，禁止按行查库。
+事项列表**不含**昵称、身高、体重。身体数据只出现在「成长曲线」工作表。
 
 行顺序与页面列表一致：时间正序。
 
@@ -307,19 +305,19 @@
 
 - 单位：身高 cm、体重 kg；X 轴为时间。
 - 数据多时可横向拖动（pan）。
-- 放大/缩小改变时间粒度：hour / day / week / month，不是 CSS scale。
+- 放大/缩小控件可见 `−` / `+`（无障碍名仍为缩小/放大），改变时间粒度：hour / day / week / month，不是 CSS scale。
 - 无历史且无记录条数时中文空态。
 - 数据来自 `GET /api/v1/profile/trends`。
 
 ### 5.5 分享 H5
 
-入口：日历页「分享」，作用于当前筛选。同样须先填身高和体重（前后端闸门与导出一致）。
+入口：日历页「分享」（与「导出」同级 ghost block），作用于当前筛选。点击后进入二级页 `/calendar/share?...`（带 `date` / `yearMonth` / `from`&`to`），**不在日历主页内联贴链接**。同样须先填身高和体重（前后端闸门与导出一致）；缺则拦截去 `/profile/body`。
 
-成功后展示可复制链接：`{WORKOUT_PUBLIC_BASE_URL}/report/{id}`。`id` 为随机 token，不是自增主键。默认基址 `http://localhost:8080`，由配置项 `WORKOUT_PUBLIC_BASE_URL` 覆盖，不要写死局域网 IP。
+二级页 POST `/api/v1/shareReports` 后展示可复制链接：`{WORKOUT_PUBLIC_BASE_URL}/report/{id}`。`id` 为随机 token，不是自增主键。默认基址 `http://localhost:8080`，由配置项 `WORKOUT_PUBLIC_BASE_URL` 覆盖，不要写死局域网 IP。可返回日历（保留筛选 query）。
 
-前端路由：`/report/:id`（React Router 路径参数，比字面 `/report/id=233232` 更自然；语义等同「按 id 打开报告」）。独立页，不走底部三 Tab。
+前端路由：`/report/:id`（React Router 路径参数，比字面 `/report/id=233232` 更自然；语义等同「按 id 打开报告」）。独立页，不走底部三 Tab。提供「回首页」到 `/`。
 
-报告内容上下排列：① 用户名称 ② 事项列表 ③ 成长曲线 ④ 建议分析（空态占位，不做真实医疗建议）。展示数据范围 `from`～`to`。
+报告内容上下排列：① 用户名称 ② 事项列表 ③ 成长曲线 ④ 建议分析（空态占位，不做真实医疗建议）。展示数据范围 `from`～`to`。事项列表时间与内容分行（或左时间右内容且有足够间距），消耗绿、摄入红。
 
 ---
 
@@ -486,7 +484,7 @@ data：新建记录对象（含 id、type、content、recordedAt）。
 
 `GET /api/v1/dailyRecords/exportCsv?date=yyyy-MM-dd`（亦可 `yearMonth` 或 `from`+`to`，互斥）
 
-返回 xlsx 文件流，`Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`，`Content-Disposition` 带 `.xlsx` 文件名。仅当前用户数据。Sheet「事项列表」表头：`记录时间,类型,内容,昵称,身高cm,体重kg`；Sheet「成长曲线」表头：`时间,身高cm,体重kg`。身体列按该行 `recordedAt` 匹配历史快照。缺身高或体重：HTTP 400「请先填写身高和体重」。
+返回 xlsx 文件流，`Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`，`Content-Disposition` 带 `.xlsx` 文件名。仅当前用户数据。Sheet「事项列表」表头：`记录时间,类型,内容`（不含昵称/身高/体重）；Sheet「成长曲线」表头：`时间,身高cm,体重kg`。缺身高或体重：HTTP 400「请先填写身高和体重」。
 
 **推荐后端导出**，保证列顺序、中文类型文案、双工作表一致。
 
@@ -547,6 +545,8 @@ data：保存后的完整资料。
 
 具体命令在工程 README 中维护；本功能文档要求「一条命令可启动、浏览器可完成登录与记账闭环」。
 
+非 test 环境首次启动若尚无用户名 `demo`，则写入演示账号（密码 `demo1234`）及约过去 90 天 + 未来 90 天的中英混合消耗/摄入与按月变化的身体历史；已存在则跳过。批量 `saveAll`，禁止 N+1。
+
 ---
 
 ## 10. 异常与边界
@@ -578,8 +578,10 @@ data：保存后的完整资料。
 | T05 | 日历进入 | 当前周、今日选中 |
 | T06 | 切到其他天再切回今天 | 列表与今日数据一致 |
 | T07 | 同一天先摄入后消耗，消耗时间更早 | 消耗排在摄入前面 |
-| T08 | 导出有数据的一天（已填身高体重） | xlsx 两工作表、中文可读、事项顺序与列表一致 |
+| T08 | 导出有数据的一天（已填身高体重） | xlsx 两工作表；事项列表仅时间/类型/内容；曲线 sheet 有身高体重 |
 | T08b | 未填身高或体重点导出/分享 | 不下载、不创建分享，引导资料页 |
+| T08c | 点分享 | 进入 `/calendar/share` 二级页，展示链接与复制，可回日历 |
+| T08d | 打开公开报告 | 无三 Tab；可回首页；事项时间与内容分行 |
 | T09 | 导出无数据的一天（已填身高体重） | 事项列表仅表头，不报错 |
 | T10 | 保存身高 175、体重 70 | 再进入我的页回显一致 |
 | T11 | 用户 A 写记录后用户 B 登录 | B 看不到 A 的记录与资料 |

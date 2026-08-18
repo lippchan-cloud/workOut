@@ -1374,4 +1374,73 @@ OpenSpec：`openspec/changes/phase-3-ui-hierarchy/`。未 commit。
 - 本实现会话未执行 `git commit` / `git push`
 - 勾选：tasks.md 7.3
 
+## §P6-1.1 — 事项 sheet 去掉身体列
+
+- 对应规格：`daily-record` — 事项列表仅 `记录时间,类型,内容`；曲线 sheet 仍有身高体重
+- 测试文件：`backend/src/test/java/com/workout/record/CsvExportTest.java`
+- RED 命令：`cd backend && mvn -q test -Dtest=CsvExportTest`
+- RED 结果：FAIL — Tests run: 14, Failures: 6 — 空日表头 expected `记录时间,类型,内容` but was `记录时间,类型,内容,昵称,身高cm,体重kg`；事项行仍含 `身高cm`/`170`
+- GREEN 命令：同上
+- GREEN 结果：PASS — Tests run: 14, Failures: 0（exit 0）
+- 实现要点：`XlsxExportWriter.writeRecordsSheet` 三列，不再写入昵称/身高/体重
+- 勾选：tasks.md 1.1
+
+## §P6-2.1 / 2.2 — 分享同级按钮与二级页
+
+- 对应规格：`calendar-view` / `ui-hierarchy` / `share-report`
+- 测试文件：`frontend/src/CalendarPage.test.tsx`、`frontend/src/SharePage.test.tsx`
+- RED 命令：`cd frontend && npm test -- src/CalendarPage.test.tsx src/SharePage.test.tsx`
+- RED 结果：FAIL — 分享无 `btn-block`、导出仍 `btn-primary`；点击分享仍停在 `/calendar`；无 `/calendar/share` 路由、找不到链接与「返回日历」
+- GREEN 命令：`cd frontend && npm test -- src/CalendarPage.test.tsx src/SharePage.test.tsx src/CsvExportClick.test.tsx`
+- GREEN 结果：PASS — CalendarPage 23；SharePage 2；CsvExportClick 3
+- 实现要点：`action-pair` 双 ghost block；点分享 `navigate(/calendar/share?…)`；`SharePage` POST 后展示 url/复制/返回日历
+- 勾选：tasks.md 2.1–2.2
+
+## §P6-3.1 / 3.2 / 3.3 — 报告回首页、列表分行、缩放 −/+
+
+- 对应规格：`share-report` / `calendar-view` / `user-profile` / `body-history`
+- 测试文件：`frontend/src/ReportPage.test.tsx`、`CalendarPage.test.tsx`、`ProfilePage.test.tsx`
+- RED 命令：`cd frontend && npm test -- src/ReportPage.test.tsx src/ProfilePage.test.tsx src/CalendarPage.test.tsx`
+- RED 结果：FAIL — 找不到 link「回首页」；ul 无 `record-list--stacked`；放大按钮可见文本仍为「放大」而非 `+`
+- GREEN 命令：同上（含相关套件）
+- GREEN 结果：PASS — ReportPage 1；ProfilePage 10；CalendarPage 23
+- 实现要点：`ReportPage` Link `/`；`.record-list--stacked` 时间/内容 column；GrowthCurve `aria-label` 缩小/放大，可见 `−`/`+`
+- 勾选：tasks.md 3.1–3.3
+
+## §P6-4.1 — Demo 种子数据集
+
+- 对应规格：设计 D7；非 test ApplicationRunner
+- 测试文件：`backend/src/test/java/com/workout/bootstrap/DemoDatasetTest.java`
+- RED 命令：先写 `DemoDatasetTest`（生产类尚未存在）
+- RED 结果：缺类则无法通过；本会话按测试契约实现 `DemoDataset.build`
+- GREEN 命令：`cd backend && mvn -q test -Dtest=DemoDatasetTest`
+- GREEN 结果：PASS — records=104, history=7, from=2026-05-20, to=2026-11-16（相对 2026-08-18 ±90 天）
+- 实现要点：`DemoDataset.build(Clock)`；`DemoDataSeeder` `@Profile("!test")`，`existsByUsername` 则跳过，`saveAll` 批量
+- 勾选：tasks.md 4.1
+
+## §P6-5.x — 文档与 main specs
+
+- 已更新 `doc/workOut-产品文档.md`、`doc/workOut-功能文档.md`、`doc/workOut-技术架构.md`（CSV→xlsx）、README
+- 已 sync：`openspec/specs/{calendar-view,share-report,daily-record,ui-hierarchy,user-profile,body-history}/spec.md`
+- 勾选：tasks.md 5.1–5.5
+
+## §P6-6.1 — 相关回归（本会话）
+
+- 命令：`cd backend && mvn -q test -Dtest=CsvExportTest,DemoDatasetTest,ShareReportTest`
+- 结果：**PASS** — exit 0（窄测；未打满 SQLPub 全量 `mvn test`）
+- 命令：`cd frontend && npm test`
+- 结果：**PASS** — Test Files 13 passed；Tests 70 passed
+- 勾选：tasks.md 6.1
+
+## §P6-6.2 — openspec validate
+
+- 命令：`openspec validate phase-6-share-export-demo --type change`
+- 结果：`Change 'phase-6-share-export-demo' is valid`
+- 勾选：tasks.md 6.2
+
+## §P6-6.3 — 不提交 git
+
+- 本实现会话未执行 `git commit` / `git push`
+- 勾选：tasks.md 6.3
+
 

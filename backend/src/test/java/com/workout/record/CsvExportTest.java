@@ -51,7 +51,9 @@ class CsvExportTest {
                 .andReturn();
 
         String items = sheetJoined(result.getResponse().getContentAsByteArray(), "事项列表");
-        org.assertj.core.api.Assertions.assertThat(items).contains("记录时间,类型,内容,昵称,身高cm,体重kg");
+        org.assertj.core.api.Assertions.assertThat(items).contains("记录时间,类型,内容");
+        org.assertj.core.api.Assertions.assertThat(items).doesNotContain("身高cm");
+        org.assertj.core.api.Assertions.assertThat(items).doesNotContain("昵称");
         org.assertj.core.api.Assertions.assertThat(items).contains("消耗");
         org.assertj.core.api.Assertions.assertThat(items).contains("跑步");
         org.assertj.core.api.Assertions.assertThat(items).doesNotContain("CONSUME");
@@ -67,7 +69,7 @@ class CsvExportTest {
                 .andExpect(status().isOk())
                 .andReturn();
         String items = sheetJoined(result.getResponse().getContentAsByteArray(), "事项列表");
-        org.assertj.core.api.Assertions.assertThat(items.trim()).isEqualTo("记录时间,类型,内容,昵称,身高cm,体重kg");
+        org.assertj.core.api.Assertions.assertThat(items.trim()).isEqualTo("记录时间,类型,内容");
     }
 
     @Test
@@ -92,7 +94,9 @@ class CsvExportTest {
                 .andReturn();
 
         String items = sheetJoined(result.getResponse().getContentAsByteArray(), "事项列表");
-        org.assertj.core.api.Assertions.assertThat(items).contains("记录时间,类型,内容,昵称,身高cm,体重kg");
+        org.assertj.core.api.Assertions.assertThat(items).contains("记录时间,类型,内容");
+        org.assertj.core.api.Assertions.assertThat(items).doesNotContain("身高cm");
+        org.assertj.core.api.Assertions.assertThat(items).doesNotContain("昵称");
         org.assertj.core.api.Assertions.assertThat(items).contains("消耗");
         org.assertj.core.api.Assertions.assertThat(items).contains("摄入");
         org.assertj.core.api.Assertions.assertThat(items).contains("八月跑步");
@@ -111,7 +115,7 @@ class CsvExportTest {
                 .andExpect(status().isOk())
                 .andReturn();
         String items = sheetJoined(result.getResponse().getContentAsByteArray(), "事项列表");
-        org.assertj.core.api.Assertions.assertThat(items.trim()).isEqualTo("记录时间,类型,内容,昵称,身高cm,体重kg");
+        org.assertj.core.api.Assertions.assertThat(items.trim()).isEqualTo("记录时间,类型,内容");
     }
 
     @Test
@@ -203,7 +207,9 @@ class CsvExportTest {
                         .header("Authorization", "Bearer " + user.token()))
                 .andExpect(status().isOk())
                 .andReturn();
-        String items = sheetJoined(result.getResponse().getContentAsByteArray(), "事项列表");
+        byte[] bytes = result.getResponse().getContentAsByteArray();
+        String items = sheetJoined(bytes, "事项列表");
+        String curve = sheetJoined(bytes, "成长曲线");
         String early = java.util.Arrays.stream(items.split("\\R"))
                 .filter(line -> line.contains("早训"))
                 .findFirst()
@@ -212,9 +218,12 @@ class CsvExportTest {
                 .filter(line -> line.contains("晚训"))
                 .findFirst()
                 .orElse("");
-        org.assertj.core.api.Assertions.assertThat(early).contains("170");
+        org.assertj.core.api.Assertions.assertThat(early).doesNotContain("170");
         org.assertj.core.api.Assertions.assertThat(early).doesNotContain("180");
-        org.assertj.core.api.Assertions.assertThat(late).contains("180");
+        org.assertj.core.api.Assertions.assertThat(late).doesNotContain("170");
+        org.assertj.core.api.Assertions.assertThat(late).doesNotContain("180");
+        org.assertj.core.api.Assertions.assertThat(curve).contains("170");
+        org.assertj.core.api.Assertions.assertThat(curve).contains("180");
     }
 
     @Test
@@ -236,7 +245,7 @@ class CsvExportTest {
             org.assertj.core.api.Assertions.assertThat(items).isNotNull();
             org.assertj.core.api.Assertions.assertThat(curve).isNotNull();
             org.assertj.core.api.Assertions.assertThat(joinRow(items.getRow(0)))
-                    .isEqualTo("记录时间,类型,内容,昵称,身高cm,体重kg");
+                    .isEqualTo("记录时间,类型,内容");
             org.assertj.core.api.Assertions.assertThat(joinRow(curve.getRow(0))).isEqualTo("时间,身高cm,体重kg");
         }
     }

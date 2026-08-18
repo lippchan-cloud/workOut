@@ -1,6 +1,5 @@
 package com.workout.modules.record.application;
 
-import com.workout.modules.profile.domain.ProfileHistoryResolver;
 import com.workout.modules.profile.infrastructure.ProfileHistoryEntity;
 import com.workout.modules.record.api.DailyRecordResponse;
 import com.workout.modules.record.domain.RecordType;
@@ -31,13 +30,13 @@ final class XlsxExportWriter {
     private XlsxExportWriter() {}
 
     /**
-     * 生成双工作表工作簿：事项列表 + 成长曲线。
+     * 生成双工作表工作簿：事项列表（无身体列）+ 成长曲线。
      */
     static byte[] write(List<DailyRecordResponse> records, List<ProfileHistoryEntity> history) {
         log.info("[日记录] XlsxExportWriter.write start records={}, history={}", records.size(), history.size());
         try (XSSFWorkbook workbook = new XSSFWorkbook();
                 ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            writeRecordsSheet(workbook, records, history);
+            writeRecordsSheet(workbook, records);
             writeCurveSheet(workbook, history);
             workbook.write(out);
             byte[] bytes = out.toByteArray();
@@ -49,25 +48,20 @@ final class XlsxExportWriter {
     }
 
     /**
-     * 事项列表：记录时间对齐当时身体快照。
+     * 事项列表：仅时间、类型、内容；身体数据不进本表。
      */
-    private static void writeRecordsSheet(
-            XSSFWorkbook workbook, List<DailyRecordResponse> records, List<ProfileHistoryEntity> history) {
+    private static void writeRecordsSheet(XSSFWorkbook workbook, List<DailyRecordResponse> records) {
         Sheet sheet = workbook.createSheet("事项列表");
         Row header = sheet.createRow(0);
-        writeCells(header, "记录时间", "类型", "内容", "昵称", "身高cm", "体重kg");
+        writeCells(header, "记录时间", "类型", "内容");
         int rowIndex = 1;
         for (DailyRecordResponse row : records) {
-            ProfileHistoryEntity snapshot = ProfileHistoryResolver.resolve(history, row.getRecordedAt());
             Row excelRow = sheet.createRow(rowIndex++);
             writeCells(
                     excelRow,
                     DATE_TIME.format(row.getRecordedAt()),
                     row.getType() == RecordType.CONSUME ? "消耗" : "摄入",
-                    row.getContent(),
-                    snapshot == null || snapshot.getNickname() == null ? "" : snapshot.getNickname(),
-                    formatDecimal(snapshot == null ? null : snapshot.getHeightCm()),
-                    formatDecimal(snapshot == null ? null : snapshot.getWeightKg()));
+                    row.getContent());
         }
     }
 

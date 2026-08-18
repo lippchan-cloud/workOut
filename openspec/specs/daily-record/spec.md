@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Current-user consume/intake records, including list-by-period, get-by-id for the detail page, and xlsx export with point-in-time body columns plus a growth-curve sheet.
+Current-user consume/intake records, including list-by-period, get-by-id for the detail page, and xlsx export with a records sheet (no body columns) plus a growth-curve sheet.
 
 ## Requirements
 
@@ -30,14 +30,15 @@ An authenticated user SHALL retrieve a daily record they own via `GET /api/v1/da
 - **AND** message is 「记录不存在」
 
 ### Requirement: CSV export includes point-in-time body columns
-`GET /api/v1/dailyRecords/exportCsv` MUST keep the same URL and period params. The download MUST be an Excel workbook (xlsx), not a text CSV: Content-Type MUST be the OpenXML spreadsheet MIME type and the filename MUST end with `.xlsx`. The workbook MUST contain sheet 「事项列表」 with header `记录时间,类型,内容,昵称,身高cm,体重kg` and rows aligned to profile history at each `recordedAt` (latest history with `changedAt <= recordedAt`; load history once, never per record). It MUST also contain sheet 「成长曲线」 with header `时间,身高cm,体重kg` and the user's body-history points. Empty period MUST still produce both sheets (事项列表 header-only). Current profile MUST NOT overwrite earlier days when a later change exists. Chinese type labels 消耗/摄入 remain. The current profile MUST have both height and weight; otherwise HTTP 400 「请先填写身高和体重」.
+`GET /api/v1/dailyRecords/exportCsv` MUST keep the same URL and period params. The download MUST be an Excel workbook (xlsx), not a text CSV: Content-Type MUST be the OpenXML spreadsheet MIME type and the filename MUST end with `.xlsx`. The workbook MUST contain sheet 「事项列表」 with header `记录时间,类型,内容` only (MUST NOT include nickname, height, or weight columns). It MUST also contain sheet 「成长曲线」 with header `时间,身高cm,体重kg` and the user's body-history points (body data lives only on this sheet). Empty period MUST still produce both sheets (事项列表 header-only). Chinese type labels 消耗/摄入 remain. The current profile MUST have both height and weight; otherwise HTTP 400 「请先填写身高和体重」. History MAY still be loaded once for the curve sheet (never per record).
 
 #### Scenario: Export header includes body columns and BOM
 - **GIVEN** authenticated user has height and weight filled
 - **AND** the user exports a day with no records
 - **WHEN** `GET /api/v1/dailyRecords/exportCsv?date=2026-08-18`
 - **THEN** the file is an xlsx workbook
-- **AND** sheet 「事项列表」 header is `记录时间,类型,内容,昵称,身高cm,体重kg`
+- **AND** sheet 「事项列表」 header is `记录时间,类型,内容`
+- **AND** sheet 「事项列表」 header does not include `身高cm` or `昵称`
 - **AND** sheet 「成长曲线」 exists with header `时间,身高cm,体重kg`
 
 #### Scenario: Rows align to history at recordedAt
@@ -45,9 +46,9 @@ An authenticated user SHALL retrieve a daily record they own via `GET /api/v1/da
 - **AND** user saved height `170` then created a record at T1 with content `早训`
 - **AND** later saved height `180` then created a record at T2 with content `晚训`
 - **WHEN** the user exports a period covering both records
-- **THEN** the `早训` row on 「事项列表」 contains `170`
-- **AND** the `晚训` row contains `180`
-- **AND** the `早训` row does not contain `180` as its height cell
+- **THEN** the `早训` row on 「事项列表」 does not contain a height column value `170`
+- **AND** the `晚训` row on 「事项列表」 does not contain a height column value `180`
+- **AND** sheet 「成长曲线」 contains `170` and `180`
 
 ### Requirement: Export requires current height and weight
 Export MUST reject when the authenticated user's current profile is missing heightCm or weightKg. The API MUST return HTTP 400 with message 「请先填写身高和体重」 and MUST NOT return a workbook. The calendar UI MUST intercept the same condition before calling export, show a Chinese prompt, and guide the user to `/profile/body`.

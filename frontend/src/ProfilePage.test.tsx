@@ -206,5 +206,7 @@ describe("ProfilePage", () => {
     await user.click(screen.getByRole("button", { name: "放大" }));
     expect(chart).toHaveAttribute("data-precision", "hour");
     expect(chart).not.toHaveStyle({ transform: expect.stringContaining("scale") } as never);
+    expect(screen.getByRole("button", { name: "缩小" })).toHaveTextContent("−");
+    expect(screen.getByRole("button", { name: "放大" })).toHaveTextContent("+");
   });
 });

@@ -94,11 +94,11 @@ export function GrowthCurve({ bodyHistory }: { bodyHistory: BodyPoint[] }) {
         </button>
       </div>
       <div className="trend-toolbar">
-        <button type="button" className="btn btn-ghost" onClick={zoomOut}>
-          缩小
+        <button type="button" className="btn btn-ghost trend-zoom" onClick={zoomOut} aria-label="缩小">
+          −
         </button>
-        <button type="button" className="btn btn-ghost" onClick={zoomIn}>
-          放大
+        <button type="button" className="btn btn-ghost trend-zoom" onClick={zoomIn} aria-label="放大">
+          +
         </button>
         <span className="trend-unit">
           {seriesLabel}（{unit}）

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { GrowthCurve, BodyPoint } from "./GrowthCurve";
 import { formatShanghaiMdHm } from "../calendar/week";
 
@@ -46,6 +46,11 @@ export function ReportPage() {
     <div className="page report-page">
       <p className="page__eyebrow">Report</p>
       <h1 className="page__title">训练报告</h1>
+      <p>
+        <Link to="/" className="btn btn-text">
+          回首页
+        </Link>
+      </p>
       {error ? <p className="empty-state">{error}</p> : null}
       {data ? (
         <div className="stack">
@@ -65,7 +70,7 @@ export function ReportPage() {
             {data.records.length === 0 ? (
               <p className="empty-state">这段时间还没有记录</p>
             ) : (
-              <ul className="record-list">
+              <ul className="record-list record-list--stacked">
                 {data.records.map((item, index) => (
                   <li
                     key={`${item.recordedAt}-${index}`}

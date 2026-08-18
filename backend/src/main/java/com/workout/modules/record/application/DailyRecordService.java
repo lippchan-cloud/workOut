@@ -335,7 +335,7 @@ public class DailyRecordService {
         requireCompleteBody(userId);
         // 复用区间列表查询，保证导出与列表同一批数据
         List<DailyRecordResponse> list = listByPeriod(userId, period);
-        // 一次加载该用户历史，内存按 recordedAt 匹配，禁止按行查库
+        // 一次加载该用户历史，仅写入成长曲线 sheet，禁止按行查库
         List<ProfileHistoryEntity> history =
                 profileHistoryRepository.findByUserIdOrderByChangedAtAscIdAsc(userId);
         log.info(

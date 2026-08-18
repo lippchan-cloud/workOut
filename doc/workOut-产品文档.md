@@ -4,12 +4,12 @@
 | --- | --- |
 | 产品名称 | workOut |
 | 文档类型 | 产品文档 |
-| 文档版本 | v1.4 |
+| 文档版本 | v1.5 |
 | 日期 | 2026-08-18 |
 | 依据 | `workOut/README.md` |
 | 文档用途 | 对齐产品定位、用户价值、范围边界与验收口径 |
 | 配套文档 | [workOut-功能文档.md](./workOut-功能文档.md)、[workOut-技术架构.md](./workOut-技术架构.md) |
-| 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/proposal.md)、[`phase-2-production-hardening`](../openspec/changes/phase-2-production-hardening/)、[`phase-3-ui-hierarchy`](../openspec/changes/phase-3-ui-hierarchy/)、[`phase-4-month-csv-body-history-curves`](../openspec/changes/phase-4-month-csv-body-history-curves/)、[`phase-5-share-report-curve-xlsx`](../openspec/changes/phase-5-share-report-curve-xlsx/) |
+| 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/proposal.md)、[`phase-2-production-hardening`](../openspec/changes/phase-2-production-hardening/)、[`phase-3-ui-hierarchy`](../openspec/changes/phase-3-ui-hierarchy/)、[`phase-4-month-csv-body-history-curves`](../openspec/changes/phase-4-month-csv-body-history-curves/)、[`phase-5-share-report-curve-xlsx`](../openspec/changes/phase-5-share-report-curve-xlsx/)、[`phase-6-share-export-demo`](../openspec/changes/phase-6-share-export-demo/) |
 | TDD | [TDD 规范](./workOut-TDD规范.md) · [TDD 验证记录](./workOut-TDD验证记录.md) |
 
 ---
@@ -26,10 +26,10 @@
 2. 当天就能记：登录后进入记录页，消耗 / 摄入各一条输入，日期默认当前时间。
 3. 按周能看：日历默认选中今天；周切换是小控件，日期格子才是主体；有记录的日子右上角显示条数；点某一条进详情。
 4. 一眼能分：消耗绿色、摄入红色。
-5. 按日能带走：选中日期后可「导出」（实际 xlsx 双工作表：事项列表 + 成长曲线）；须先填身高和体重。文件含当时有效的身高、体重（按事项时间对齐历史）。
+5. 按日能带走：选中日期后「分享」与「导出」同级。导出为 xlsx 双工作表：事项列表（时间/类型/内容）+ 成长曲线（身高体重）。须先填身高和体重。
 6. 人是自己的：「我的」先出现三个选项，再进身体资料或账号安全；身体资料可填真实日期；改资料会留下变更历史。
-7. 能看变化：成长曲线在「我的」身体资料页下方（单位 cm/kg、时间轴、可拖、放大改时间粒度）。
-8. 能分享：日历「分享」生成 H5 链接（`/report/:id`），公开只读报告含范围、用户名称、事项、曲线，并预留建议分析。
+7. 能看变化：成长曲线在「我的」身体资料页下方（单位 cm/kg、时间轴、可拖、−/+ 改时间粒度）。
+8. 能分享：日历「分享」进入二级页生成 H5 链接（`/report/:id`），公开只读报告含范围、用户名称、事项、曲线，并预留建议分析；报告可回首页。
 
 **本版本不做：** 卡路里自动计算、运动库、社交、组织/团队权限、邮箱验证与找回密码、营养分析报告。
 
@@ -163,12 +163,12 @@ MVP 按**多账号、个人数据隔离**设计：一人一账号，不引入组
 - 未登录：可见导航壳；点 Tab 或业务操作跳转登录 / 注册；登录后回到目标页。
 - 记录 / 日历 / 我的 / 导出：全部按当前用户隔离。
 - 记录页：当日消耗项、当日摄入项各一个输入框；日期默认为操作时间，可改。
-- 日历页：按周展示，默认选中今日；选中日后展示当天列表（含时分）；格子 hover/气泡；点条目进详情；可导出 / 分享。
-- 列表：按记录时间正序；消耗绿色、摄入红色；月/日列表均展示记录时分。
-- 按当前筛选导出 xlsx（事项列表 + 成长曲线两工作表；列含昵称、身高 cm、体重 kg，按事项 `recordedAt` 对齐历史快照）。缺身高或体重则拦截并引导资料页。
-- 分享生成随机 token 的 H5：`{WORKOUT_PUBLIC_BASE_URL}/report/{id}`，公开报告展示范围 + 用户名称 + 事项 + 曲线 + 建议分析空态。
+- 日历页：按周展示，默认选中今日；选中日后展示当天列表（含时分，时间与内容分行）；格子 hover/气泡；点条目进详情；分享与导出同级。
+- 列表：按记录时间正序；消耗绿色、摄入红色；月/日列表均展示记录时分；时间与内容不挤在一行。
+- 按当前筛选导出 xlsx（事项列表仅 `记录时间,类型,内容`；成长曲线 sheet 含身高 cm、体重 kg）。缺身高或体重则拦截并引导资料页。
+- 分享进入日历二级页 `/calendar/share`，再生成随机 token 的 H5：`{WORKOUT_PUBLIC_BASE_URL}/report/{id}`。公开报告展示范围 + 用户名称 + 事项 + 曲线 + 建议分析空态，并可回首页。
 - 身体资料含真实日期；变更写入历史；注销时批量删除历史与分享。
-- 成长曲线在 `/profile/body` 下方：单位 cm/kg、时间轴、横向拖动、放大缩小改 hour/day/week/month 粒度。
+- 成长曲线在 `/profile/body` 下方：单位 cm/kg、时间轴、横向拖动、−/+ 改 hour/day/week/month 粒度。
 - 我的：二级三选项后再进身体资料或账号安全。
 - CLI 启动整站（Spring Boot 托管前端静态资源 + API）。
 
@@ -234,9 +234,9 @@ MVP 按**多账号、个人数据隔离**设计：一人一账号，不引入组
 4. 能新增消耗记录、摄入记录，日期默认可改。
 5. 日历按周展示且默认今天；切换日期后列表随之变化。
 6. 列表时间正序，颜色语义正确。
-7. 能按当前筛选导出 xlsx（事项列表 + 成长曲线），Excel 可打开；缺身高体重会引导补全。
+7. 能按当前筛选导出 xlsx（事项列表无身体列，成长曲线 sheet 有身高体重），Excel 可打开；缺身高体重会引导补全。
 8. 能保存并回显身高、体重与资料真实日期；身体资料页下方可见成长曲线。
-9. 能分享 H5 报告链接（`/report/:id`），未登录可打开该范围快照。
+9. 能从日历二级页分享 H5 报告链接（`/report/:id`），未登录可打开该范围快照，报告可回首页。
 10. 用户 A 的记录与资料对用户 B 不可见。
 11. 通过 CLI 启动后，浏览器可完成本页全部操作。
 
