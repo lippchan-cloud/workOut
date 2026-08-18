@@ -120,6 +120,7 @@ class ShareAdviceAsyncTest {
                 .andExpect(jsonPath("$.data.advice").value("多喝水，仅供参考"));
         assertThat(stubDeepSeekClient.getInvokeCount()).isEqualTo(1);
         assertThat(stubDeepSeekClient.getLastUserPrompt()).contains("userId=" + userId);
+        assertThat(stubDeepSeekClient.getLastUserPrompt()).contains("本次询问");
     }
 
     @Test

@@ -31,6 +31,9 @@ public class AiContextCompressService {
     private static final int MAX_RECORDS = 40;
     private static final int EMBED_DIM = 32;
 
+    /** 本次+历史压缩询问拼入模型的总字数上限。 */
+    public static final int MAX_PROMPT_CHARS = 1000;
+
     private final AiContextChunkRepository chunkRepository;
 
     /**
@@ -86,6 +89,50 @@ public class AiContextCompressService {
                 hash.substring(0, 8),
                 EMBED_DIM);
         return summary;
+    }
+
+    /**
+     * 当前摘要优先，再按时间新→旧拼入同用户历史压缩记录，总长不超过 {@link #MAX_PROMPT_CHARS}。
+     * 当前摘要本身超限时不截断当前。一次批量加载，禁止按条查库。
+     *
+     * @param userId          隔离边界
+     * @param currentSummary  本次压缩摘要
+     * @return 拼好的模型上下文
+     */
+    public String assembleWithHistory(Long userId, String currentSummary) {
+        log.info(
+                "[上下文] assembleWithHistory start userId={}, currentLen={}",
+                userId,
+                currentSummary == null ? 0 : currentSummary.length());
+        String current = currentSummary == null ? "" : currentSummary;
+        StringBuilder assembled = new StringBuilder();
+        assembled.append("## 本次询问\n").append(current);
+        // 一次拉出该用户全部 chunk，内存里按新到旧拼接，禁止循环查库
+        List<AiContextChunkEntity> chunks = chunkRepository.findTop20ByUserIdOrderByCreatedAtDesc(userId);
+        log.info(
+                "[上下文] assemble loaded entityType=AiContextChunkEntity userId={}, size={}",
+                userId,
+                chunks.size());
+        int historyBlocks = 0;
+        for (AiContextChunkEntity chunk : chunks) {
+            String text = chunk.getSummaryText();
+            if (text == null || text.isBlank() || text.equals(current)) {
+                continue;
+            }
+            String block = "\n\n### 历史询问\n" + text;
+            if (assembled.length() + block.length() > MAX_PROMPT_CHARS) {
+                break;
+            }
+            assembled.append(block);
+            historyBlocks++;
+        }
+        String result = assembled.toString();
+        log.info(
+                "[上下文] assembleWithHistory done userId={}, resultLen={}, historyBlocks={}",
+                userId,
+                result.length(),
+                historyBlocks);
+        return result;
     }
 
     /**

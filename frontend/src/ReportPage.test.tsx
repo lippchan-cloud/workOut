@@ -61,4 +61,19 @@ describe("public report page", () => {
     );
     expect(await screen.findByText("多喝水，仅供参考")).toBeInTheDocument();
   });
+
+  it("renders ready advice as markdown", async () => {
+    stubReport({
+      ...base,
+      advice: "## 喝水建议\n\n- 每天八杯\n\n仅供参考",
+      adviceStatus: "READY",
+    });
+    render(
+      <MemoryRouter initialEntries={["/report/md1"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole("heading", { name: "喝水建议" })).toBeInTheDocument();
+    expect(screen.getByText("每天八杯")).toBeInTheDocument();
+  });
 });

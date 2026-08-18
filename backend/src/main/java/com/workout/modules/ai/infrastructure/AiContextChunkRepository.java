@@ -20,4 +20,9 @@ public interface AiContextChunkRepository extends JpaRepository<AiContextChunkEn
      * 按用户列出（调试/审计，批量）。
      */
     List<AiContextChunkEntity> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    /**
+     * 取该用户最近若干条压缩询问，供拼 prompt（一次查出，禁止循环）。
+     */
+    List<AiContextChunkEntity> findTop20ByUserIdOrderByCreatedAtDesc(Long userId);
 }

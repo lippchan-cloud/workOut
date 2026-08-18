@@ -34,7 +34,7 @@
 2. 文本首行强制 `userId={id}`。
 3. 计算 `embed_hash`；`findFirstByUserIdAndEmbedHash` 命中则复用（**仅同 userId**）。
 4. 未命中：生成 `embedding_json`（固定维度 bag-of-hash），与摘要一并 `INSERT`。
-5. 将 `summary_text` 拼入 `PhysioScientistPrompts.userMessage(userId, compressed)`。
+5. 将 `summary_text` 与同用户历史压缩块拼入 prompt：当前优先，总长上限 **1000** 字（超出则不再追加更早历史；当前本身超限不截断），再交给 `PhysioScientistPrompts.userMessage`。模型必须输出简体中文 Markdown。
 
 ## 分享异步流水线
 
@@ -44,7 +44,8 @@ POST /shareReports
   → AFTER_COMMIT 事件
       → SQL 限流（ai_call_log COUNT）
       → compressAndStore（MySQL）
-      → DeepSeek chat
+      → assembleWithHistory（同用户历史压缩记录，≤1000 字）
+      → DeepSeek chat（简体中文 Markdown）
       → 更新 snapshot.advice + advice_status
       → INSERT ai_call_log（SUCCESS/FAILED/RATE_LIMITED）
 ```

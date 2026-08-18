@@ -16,15 +16,16 @@ public final class PhysioScientistPrompts {
             约束：
             1. 语气专业但克制，可写「仅供参考」，不要写成医疗诊断或处方。
             2. 不要编造用户未提供的疾病史或化验指标。
-            3. 输出使用简体中文，分段简洁，控制在 400 字以内。
-            4. 用户提示中会包含 userId=…，你只分析该用户数据，不得假设其他用户。
+            3. 必须使用简体中文 Markdown 输出（标题、列表、加粗），不要英文正文，不要用 markdown 代码围栏包裹全文。
+            4. 分段简洁，控制在 400 字以内。
+            5. 用户提示中会包含 userId=…，以及「本次询问」与可能的「历史询问」压缩记录；只分析该 userId，不得假设其他用户。
             """;
 
     /**
      * 组装 user 消息。
      */
     public static String userMessage(Long userId, String compressedContext) {
-        return "请基于以下压缩上下文给出建议分析（填写报告「建议分析」栏）。\n"
+        return "请基于以下压缩上下文给出建议分析（填写报告「建议分析」栏）。必须输出简体中文 Markdown。\n"
                 + "边界：userId="
                 + userId
                 + "\n---\n"

@@ -91,10 +91,12 @@ public class ShareAdviceWorker {
             if (!compressed.contains("userId=" + row.getUserId())) {
                 throw new IllegalStateException("compressed context missing userId");
             }
+            // 把同用户历史压缩询问一并塞进 prompt，受字数上限约束
+            String withHistory = compressService.assembleWithHistory(row.getUserId(), compressed);
             String advice = deepSeekClient.chat(
                     key.getApiKey(),
                     PhysioScientistPrompts.SYSTEM,
-                    PhysioScientistPrompts.userMessage(row.getUserId(), compressed));
+                    PhysioScientistPrompts.userMessage(row.getUserId(), withHistory));
             updateAdvice(row, AdviceStatus.READY, advice);
             writeLog(row.getUserId(), rateKeyId(key), token, "SUCCESS");
             log.info(

@@ -37,6 +37,7 @@
 2. 事务提交后 `@TransactionalEventListener(AFTER_COMMIT)` + `@Async` 触发 `ShareAdviceService`。
 3. 无 key → `NONE_KEY` + 「未配置 API Key」，不调模型。
 4. 超限 / 模型失败 → `FAILED` + 中文文案；**分享创建本身不 500**。
+5. 问模型时：本次压缩摘要 + 同用户历史压缩询问（总长上限 1000 字，当前优先）；系统提示强制 **简体中文 Markdown**。公开报告「建议分析」按 Markdown 渲染。
 
 ## 失败降级
 
@@ -50,5 +51,5 @@
 ## 相关代码
 
 - `HttpDeepSeekClient` / `StubDeepSeekClient`
-- `ShareAdviceService`、`AiRateLimitService`
+- `ShareAdviceService`、`AiRateLimitService`、`AiContextCompressService.assembleWithHistory`
 - Cursor Skill：`.cursor/skills/physio-scientist-advice/SKILL.md`

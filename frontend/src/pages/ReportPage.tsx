@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { Link, useParams } from "react-router-dom";
 import { GrowthCurve, BodyPoint } from "./GrowthCurve";
 import { formatShanghaiMdHm } from "../calendar/week";
@@ -39,6 +40,14 @@ function adviceDisplay(data: ReportPayload): string {
     return data.advice;
   }
   return data.advice?.trim() || "建议分析（即将提供）";
+}
+
+/**
+ * READY 且有正文时用 Markdown 渲染；状态文案仍走纯文本。
+ */
+function isReadyMarkdown(data: ReportPayload): boolean {
+  const status = data.adviceStatus ?? (data.advice ? "READY" : "NONE_KEY");
+  return status === "READY" && Boolean(data.advice?.trim());
 }
 
 /**
@@ -142,9 +151,15 @@ export function ReportPage() {
             <h2 className="page__title" style={{ fontSize: "1.15rem" }}>
               建议分析
             </h2>
-            <p className="empty-state" data-testid="advice-text">
-              {adviceDisplay(data)}
-            </p>
+            {isReadyMarkdown(data) ? (
+              <div className="advice-markdown" data-testid="advice-text">
+                <ReactMarkdown>{adviceDisplay(data)}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="empty-state" data-testid="advice-text">
+                {adviceDisplay(data)}
+              </p>
+            )}
           </section>
         </div>
       ) : null}

@@ -819,6 +819,41 @@ button {
   background: rgba(0, 0, 0, 0.18);
 }
 
+.advice-markdown {
+  margin: 0;
+  padding: 1.1rem;
+  text-align: left;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--stroke-strong);
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.18);
+  line-height: 1.6;
+}
+
+.advice-markdown h1,
+.advice-markdown h2,
+.advice-markdown h3 {
+  margin: 0 0 0.6rem;
+  font-size: 1.05rem;
+}
+
+.advice-markdown p,
+.advice-markdown ul,
+.advice-markdown ol {
+  margin: 0 0 0.7rem;
+}
+
+.advice-markdown ul,
+.advice-markdown ol {
+  padding-left: 1.2rem;
+}
+
+.advice-markdown p:last-child,
+.advice-markdown ul:last-child,
+.advice-markdown ol:last-child {
+  margin-bottom: 0;
+}
+
 @keyframes rise {
   from {
     opacity: 0;

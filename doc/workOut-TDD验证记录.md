@@ -1568,3 +1568,19 @@ OpenSpec：`openspec/changes/phase-3-ui-hierarchy/`。未 commit。
 - 实现要点：`work_out_api_key` + `pool_id`；`AdminApiKeyController` GET/POST `/pool`；`ApiKeyAssignmentService.assignDefaultIfAbsent`（SELECT id 再 findById）；`CmsApiKeysPage` 密钥库；`TestApiKeys.bind`；文档同步；未写真实 sk-
 - 未 commit
 
+## 历史压缩询问 + 中文 Markdown 报告
+
+### Task — 拼历史（≤1000）/ 强制中文 Markdown / 报告页渲染
+
+- 对应规格：问 AI 带同用户历史压缩记录；总长上限 1000；系统提示强制简体中文 Markdown；报告 READY 正文 Markdown 渲染
+- 测试类/文件：`PhysioScientistPromptsTest`、`AiContextHistoryAssembleTest`、`ShareAdviceAsyncTest`；`frontend/src/ReportPage.test.tsx`
+- RED 命令：`cd backend && mvn -q test -Dtest=PhysioScientistPromptsTest,AiContextHistoryAssembleTest,ShareAdviceAsyncTest#shareWithKeyShouldAsyncFillAdviceViaStub`
+- RED 结果：FAIL — 缺 `HISTORY-NEW-MARKER`；SYSTEM 无 `Markdown`；user prompt 无「本次询问」
+- GREEN 命令：`cd backend && mvn -q test -Dtest=PhysioScientistPromptsTest,AiContextHistoryAssembleTest,ShareAdviceAsyncTest,AiAdviceRateLimitTest`
+- GREEN 结果：PASS — exit 0（`PhysioScientistPromptsTest` + `AiContextHistoryAssembleTest` + `ShareAdviceAsyncTest` 3 + `AiAdviceRateLimitTest`）
+- 前端 RED：`renders ready advice as markdown` 缺 heading「喝水建议」
+- 前端 GREEN 命令：`cd frontend && npm test -- src/ReportPage.test.tsx`
+- 前端 GREEN 结果：PASS — Tests 4 passed
+- 实现要点：`assembleWithHistory` 批量查同 userId、当前优先、超 1000 不再追加；`PhysioScientistPrompts` + Skill；`ReportPage` + `react-markdown`（不渲染原始 HTML）
+- 未 commit
+
