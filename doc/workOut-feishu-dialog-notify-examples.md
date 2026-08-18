@@ -36,7 +36,7 @@ printf '%s' '{"purpose":"试发","result":"ok","plan":"curl Base JSON"}' \
 
 ## Payload note
 
-Body is Base automation JSON (`目的`/`结果`/`执行方案` + `purpose`/`result`/`plan` + `text`/`content`), not bot `msg_type`. Map keys in Feishu Base automation if needed.
+Body is Base automation JSON (`仓库`/`目的`/`结果`/`执行方案` + `repo`/`purpose`/`result`/`plan` + `text`/`content`), not bot `msg_type`. `仓库`：有 git 用 origin 地址，无 git 用项目目录名。Map keys in Feishu Base automation if needed.
 
 ## Agent Shell settings
 

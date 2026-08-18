@@ -16,27 +16,29 @@ LOG_FILE="${FEISHU_DIALOG_NOTIFY_LOG:-/tmp/feishu-dialog-notify.log}"
 PURPOSE="${PURPOSE:-}"
 RESULT="${RESULT:-}"
 PLAN="${PLAN:-}"
+REPO="${REPO:-}"
 SYNC_MODE=0
 
 usage() {
   cat <<'EOF'
 Usage:
   send_async.sh --purpose TEXT --result TEXT --plan TEXT
-  send_async.sh -p TEXT -r TEXT -a TEXT
-  PURPOSE=... RESULT=... PLAN=... send_async.sh
-  echo '{"purpose":"...","result":"...","plan":"..."}' | send_async.sh --stdin
+  send_async.sh -p TEXT -r TEXT -a TEXT [--repo GIT_URL]
+  PURPOSE=... RESULT=... PLAN=... REPO=... send_async.sh
+  echo '{"purpose":"...","result":"...","plan":"...","repo":"..."}' | send_async.sh --stdin
 
 Options:
   -p, --purpose   目的
   -r, --result    结果
   -a, --plan      执行方案
-  --stdin         Read JSON from stdin with keys purpose/result/plan
+      --repo      仓库 git 地址或项目名（默认 origin；无 git 则用项目目录名）
+  --stdin         Read JSON from stdin with keys purpose/result/plan/repo
   -h, --help      Show help
 
 Always exits 0. Network work runs in background; failures append to LOG_FILE.
 
 Posts to BOTH:
-  1) Base automation JSON (目的/结果/执行方案 + purpose/result/plan + text)
+  1) Base automation JSON (仓库/目的/结果/执行方案 + repo/purpose/result/plan + text)
   2) Custom bot webhook with msg_type=text
 EOF
 }
@@ -59,6 +61,10 @@ parse_stdin_json() {
   PURPOSE=$(printf '%s' "$raw" | sed -n 's/.*"purpose"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
   RESULT=$(printf '%s' "$raw" | sed -n 's/.*"result"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
   PLAN=$(printf '%s' "$raw" | sed -n 's/.*"plan"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+  REPO=$(printf '%s' "$raw" | sed -n 's/.*"repo"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+  if [[ -z "$REPO" ]]; then
+    REPO=$(printf '%s' "$raw" | sed -n 's/.*"仓库"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+  fi
 }
 
 while [[ $# -gt 0 ]]; do
@@ -73,6 +79,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -a|--plan)
       PLAN="${2:-}"
+      shift 2
+      ;;
+    --repo)
+      REPO="${2:-}"
       shift 2
       ;;
     --stdin)
@@ -99,17 +109,29 @@ fi
 PURPOSE="${PURPOSE:-（未填写）}"
 RESULT="${RESULT:-（未填写）}"
 PLAN="${PLAN:-（未填写）}"
+if [[ -z "$REPO" ]]; then
+  REPO=$(git remote get-url origin 2>/dev/null || true)
+fi
+if [[ -z "$REPO" ]]; then
+  toplevel=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  if [[ -n "$toplevel" ]]; then
+    REPO=$(basename "$toplevel")
+  else
+    REPO=$(basename "$(pwd)")
+  fi
+fi
 
-TEXT=$(printf '目的：\n%s\n结果：\n%s\n执行方案：\n%s' "$PURPOSE" "$RESULT" "$PLAN")
+TEXT=$(printf '仓库：\n%s\n目的：\n%s\n结果：\n%s\n执行方案：\n%s' "$REPO" "$PURPOSE" "$RESULT" "$PLAN")
 
+EG=$(json_escape "$REPO")
 EP=$(json_escape "$PURPOSE")
 ER=$(json_escape "$RESULT")
 EA=$(json_escape "$PLAN")
 ET=$(json_escape "$TEXT")
 
 # Base automation: dual Chinese/English keys + combined text/content for flexible field mapping
-BASE_PAYLOAD=$(printf '{"目的":"%s","结果":"%s","执行方案":"%s","purpose":"%s","result":"%s","plan":"%s","text":"%s","content":"%s"}' \
-  "$EP" "$ER" "$EA" "$EP" "$ER" "$EA" "$ET" "$ET")
+BASE_PAYLOAD=$(printf '{"仓库":"%s","目的":"%s","结果":"%s","执行方案":"%s","repo":"%s","purpose":"%s","result":"%s","plan":"%s","text":"%s","content":"%s"}' \
+  "$EG" "$EP" "$ER" "$EA" "$EG" "$EP" "$ER" "$EA" "$ET" "$ET")
 
 # Custom bot: open.feishu.cn bot/v2 requires msg_type (text)
 BOT_PAYLOAD=$(printf '{"msg_type":"text","content":{"text":"%s"}}' "$ET")

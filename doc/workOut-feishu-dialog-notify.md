@@ -2,7 +2,7 @@
 name: feishu-dialog-notify
 description: >-
   Asynchronously posts Cursor conversation turn summaries to Feishu (Lark) in a
-  fixed Chinese three-section format (目的 / 结果 / 执行方案): both Base
+  fixed Chinese four-section format (仓库 / 目的 / 结果 / 执行方案): both Base
   (多维表格) automation webhook AND custom bot/v2 hook (msg_type=text).
   Auto-applies for all chats where this skill is available: after completing a
   meaningful assistant turn, the agent SHOULD fire-and-forget notify without
@@ -28,15 +28,17 @@ Skip trivial turns (pure acks, clarifying one-liners with no substantive work). 
 ## Message format (exact headings, Chinese, this order)
 
 ```
+仓库：
 目的：
 结果：
 执行方案：
 ```
 
-Fill from the **current** conversation turn only:
+Fill from the **current** conversation turn only. `仓库`：有 git 则用 `origin` 地址，没有 git 控制则用项目目录名。
 
 | Section | Content |
 |---------|---------|
+| 仓库 | Git remote URL；无 git 时为项目名称 |
 | 目的 | What the user wanted |
 | 结果 | What was completed / decided |
 | 执行方案 | How it was done (brief steps) |
@@ -70,12 +72,13 @@ Use the bundled script — do not invent curl each time.
 ## Script CLI
 
 ```text
-send_async.sh --purpose TEXT --result TEXT --plan TEXT
+send_async.sh --purpose TEXT --result TEXT --plan TEXT [--repo GIT_URL]
 send_async.sh -p TEXT -r TEXT -a TEXT          # short flags (-a = plan/方案)
-echo via env: PURPOSE / RESULT / PLAN
+echo via env: PURPOSE / RESULT / PLAN / REPO
 ```
 
-Also accepts stdin JSON: `{"purpose":"...","result":"...","plan":"..."}`.
+Also accepts stdin JSON: `{"purpose":"...","result":"...","plan":"...","repo":"..."}`.
+`--repo` 可省略：有 git 用 `git remote get-url origin`，否则用当前项目目录名。
 
 Launcher always exits 0. Optional logs: `/tmp/feishu-dialog-notify.log`.
 
@@ -90,14 +93,16 @@ Launcher always exits 0. Optional logs: `/tmp/feishu-dialog-notify.log`.
 
 ```json
 {
+  "仓库": "...",
   "目的": "...",
   "结果": "...",
   "执行方案": "...",
+  "repo": "...",
   "purpose": "...",
   "result": "...",
   "plan": "...",
-  "text": "目的：...\n结果：...\n执行方案：...",
-  "content": "目的：...\n结果：...\n执行方案：..."
+  "text": "仓库：...\n目的：...\n结果：...\n执行方案：...",
+  "content": "仓库：...\n目的：...\n结果：...\n执行方案：..."
 }
 ```
 
@@ -111,14 +116,14 @@ Bot hook 缺少 `msg_type` 会返回 `params error, msg_type need`。脚本固�
 {
   "msg_type": "text",
   "content": {
-    "text": "目的：...\n结果：...\n执行方案：..."
+    "text": "仓库：...\n目的：...\n结果：...\n执行方案：..."
   }
 }
 ```
 
 ## Rules
 
-1. After a meaningful turn (or on user sync ask), fill 目的 / 结果 / 执行方案, then call the script async — **without requiring manual skill selection**.
+1. After a meaningful turn (or on user sync ask), fill 仓库 / 目的 / 结果 / 执行方案, then call the script async — **without requiring manual skill selection**.
 2. Never wait for Feishu; never surface send errors as conversation failures.
 3. Never include secrets in the Feishu body.
 4. Always use the bundled script（双通道 Base + bot）；不要只推其一，也不要手拼 bot payload。
