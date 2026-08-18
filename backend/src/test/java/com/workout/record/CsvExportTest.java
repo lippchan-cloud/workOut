@@ -1,0 +1,108 @@
+package com.workout.record;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class CsvExportTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Test
+    void exportWithDataShouldContainBomHeaderChineseTypeAndFilename() throws Exception {
+        AuthUser user = register("csv_user", "secret12");
+        create(user.token(), "CONSUME", "跑步", "2026-08-18T07:30:00+08:00");
+
+        MvcResult result = mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
+                        .param("date", "2026-08-18")
+                        .header("Authorization", "Bearer " + user.token()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("workout-2026-08-18.csv")))
+                .andReturn();
+
+        byte[] bytes = result.getResponse().getContentAsByteArray();
+        org.assertj.core.api.Assertions.assertThat(bytes[0]).isEqualTo((byte) 0xEF);
+        org.assertj.core.api.Assertions.assertThat(bytes[1]).isEqualTo((byte) 0xBB);
+        org.assertj.core.api.Assertions.assertThat(bytes[2]).isEqualTo((byte) 0xBF);
+        String csv = new String(bytes, StandardCharsets.UTF_8);
+        org.assertj.core.api.Assertions.assertThat(csv).contains("记录时间,类型,内容");
+        org.assertj.core.api.Assertions.assertThat(csv).contains("消耗");
+        org.assertj.core.api.Assertions.assertThat(csv).doesNotContain("CONSUME");
+    }
+
+    @Test
+    void exportEmptyDayShouldContainHeaderOnly() throws Exception {
+        AuthUser user = register("csv_empty", "secret12");
+        MvcResult result = mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
+                        .param("date", "2026-08-18")
+                        .header("Authorization", "Bearer " + user.token()))
+                .andExpect(status().isOk())
+                .andReturn();
+        String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8).replace("\uFEFF", "");
+        org.assertj.core.api.Assertions.assertThat(csv.trim()).isEqualTo("记录时间,类型,内容");
+    }
+
+    @Test
+    void exportWithoutTokenShouldReturn401() throws Exception {
+        mockMvc.perform(get("/api/v1/dailyRecords/exportCsv").param("date", "2026-08-18"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void exportShouldNotIncludeOtherUsersRows() throws Exception {
+        AuthUser a = register("csv_a", "secret12");
+        AuthUser b = register("csv_b", "secret12");
+        create(a.token(), "INTAKE", "A的午餐", "2026-08-18T12:00:00+08:00");
+
+        MvcResult result = mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
+                        .param("date", "2026-08-18")
+                        .header("Authorization", "Bearer " + b.token()))
+                .andExpect(status().isOk())
+                .andReturn();
+        String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+        org.assertj.core.api.Assertions.assertThat(csv).doesNotContain("A的午餐");
+    }
+
+    private void create(String token, String type, String content, String recordedAt) throws Exception {
+        mockMvc.perform(post("/api/v1/dailyRecords")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "request", Map.of("type", type, "content", content, "recordedAt", recordedAt)))))
+                .andExpect(status().isOk());
+    }
+
+    private AuthUser register(String username, String password) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "request", Map.of("username", username, "password", password)))))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+        return new AuthUser(data.path("token").asText());
+    }
+
+    private record AuthUser(String token) {}
+}
