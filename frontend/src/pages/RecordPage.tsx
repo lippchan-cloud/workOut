@@ -30,11 +30,12 @@ function RecordForm({
   const [recordedAt, setRecordedAt] = useState(nowLocalInput);
   const [message, setMessage] = useState("");
   const isConsume = type === "CONSUME";
+  const formPath = isConsume ? "/record/consume" : "/record/intake";
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!isAuthenticated) {
-      navigate("/login?redirect=/");
+      navigate(`/login?redirect=${formPath}`);
       return;
     }
     if (!content.trim()) {
@@ -81,20 +82,72 @@ function RecordForm({
   );
 }
 
+function BackButton() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" className="btn btn-ghost page-back" onClick={() => navigate(-1)}>
+      返回
+    </button>
+  );
+}
+
 /**
- * 记录页：消耗 / 摄入两表单。
+ * 记录一级页：大按钮入口，不直接展示消耗/摄入。
  */
 export function RecordPage() {
-  const defaults = useMemo(() => nowLocalInput(), []);
+  const navigate = useNavigate();
   return (
     <div className="page">
       <p className="page__eyebrow">Today</p>
       <h1 className="page__title">记录</h1>
       <p className="page__subtitle">一条一事，绿耗红食，马上开练。</p>
+      <button type="button" className="btn btn-primary btn-record-hero" onClick={() => navigate("/record")}>
+        开始记录
+      </button>
+    </div>
+  );
+}
+
+/**
+ * 记录二级页：选择消耗或摄入。
+ */
+export function RecordTypePage() {
+  const navigate = useNavigate();
+  return (
+    <div className="page">
+      <BackButton />
+      <p className="page__eyebrow">Record</p>
+      <h1 className="page__title">记什么</h1>
+      <p className="page__subtitle">先选消耗或摄入，再写下这一条。</p>
       <div className="stack">
-        <RecordForm type="CONSUME" title="当日消耗" contentLabel="消耗内容" saveLabel="保存消耗" />
-        <RecordForm type="INTAKE" title="当日摄入" contentLabel="摄入内容" saveLabel="保存摄入" />
+        <button type="button" className="btn btn-consume record-type-btn" onClick={() => navigate("/record/consume")}>
+          消耗
+        </button>
+        <button type="button" className="btn btn-intake record-type-btn" onClick={() => navigate("/record/intake")}>
+          摄入
+        </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 记录表单页：消耗或摄入其中一种。
+ */
+export function RecordFormPage({ type }: { type: "CONSUME" | "INTAKE" }) {
+  const defaults = useMemo(() => nowLocalInput(), []);
+  const isConsume = type === "CONSUME";
+  return (
+    <div className="page">
+      <BackButton />
+      <p className="page__eyebrow">{isConsume ? "Burn" : "Fuel"}</p>
+      <h1 className="page__title">{isConsume ? "当日消耗" : "当日摄入"}</h1>
+      <p className="page__subtitle">{isConsume ? "绿耗一条，马上开练。" : "红食一条，记清楚就好。"}</p>
+      {isConsume ? (
+        <RecordForm type="CONSUME" title="当日消耗" contentLabel="消耗内容" saveLabel="保存消耗" />
+      ) : (
+        <RecordForm type="INTAKE" title="当日摄入" contentLabel="摄入内容" saveLabel="保存摄入" />
+      )}
       <p hidden>{defaults}</p>
     </div>
   );

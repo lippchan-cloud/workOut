@@ -1,11 +1,11 @@
 # 集成测试直连 SQLPub MySQL（与主配置同一实例），不再使用 H2。
-# 测试会向 work_out_user / work_out_daily_record / work_out_profile 写入数据；用例通过 UUID 后缀用户名降低冲突。
-# Flyway 仅执行尚未记录的迁移（V1 建旧表名，V2 再 RENAME/CREATE 为 work_out_*），不改动库中其它业务表。
+# 测试会向 work_out_* 表写入数据；用例通过 UUID 后缀用户名降低冲突。
+# 共享库 baseline-on-migrate + baseline-version:1，启动后由 V2 确保 work_out_* 表存在。
 spring:
   datasource:
-    url: ${WORKOUT_DB_URL:jdbc:mysql://mysql5.sqlpub.com:3310/inv_doc?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
-    username: ${WORKOUT_DB_USER:user_lipp}
-    password: ${WORKOUT_DB_PASSWORD:pgGJlfNr1pSJbcq1}
+    url: jdbc:mysql://mysql5.sqlpub.com:3310/inv_doc?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: user_lipp
+    password: "pgGJlfNr1pSJbcq1"
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:

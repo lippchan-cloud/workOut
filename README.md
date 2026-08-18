@@ -53,6 +53,10 @@ cd frontend && npm test
 
 窄测示例：`cd backend && mvn -q test -Dtest=AuthLoginTest`
 
+## 后台 CMS（第一阶段临时开放）
+
+独立入口：`http://localhost:8080/cms`（登录页也有「后台管理」链接）。**无需登录**即可看到全部账户的用户名、创建时间、昵称、身高、体重；**不会展示密码或密码哈希**。这是临时措施，后续必须加鉴权；请勿对公网暴露。普通业务 API（记录/资料）仍需 JWT。
+
 ## 文档
 - [产品文档](doc/workOut-产品文档.md)
 - [功能文档](doc/workOut-功能文档.md)
@@ -61,8 +65,8 @@ cd frontend && npm test
 - [验收记录](doc/验收记录.md)（T00–T13）
 
 ## OpenSpec + TDD
-- 变更：[`openspec/changes/init-workout-mvp`](openspec/changes/init-workout-mvp/proposal.md)
-- 任务清单：[`tasks.md`](openspec/changes/init-workout-mvp/tasks.md)
+- 变更：[`openspec/changes/init-workout-mvp`](openspec/changes/init-workout-mvp/proposal.md)、[`openspec/changes/add-admin-cms-accounts`](openspec/changes/add-admin-cms-accounts/proposal.md)
+- 任务清单：[`init-workout-mvp/tasks.md`](openspec/changes/init-workout-mvp/tasks.md)、[`add-admin-cms-accounts/tasks.md`](openspec/changes/add-admin-cms-accounts/tasks.md)
 - **TDD 规范（门禁）：** [`doc/workOut-TDD规范.md`](doc/workOut-TDD规范.md)
 - **TDD 验证台账（红绿证据）：** [`doc/workOut-TDD验证记录.md`](doc/workOut-TDD验证记录.md)
 - 实现计划索引：[`docs/superpowers/plans/2026-08-18-init-workout-mvp.md`](docs/superpowers/plans/2026-08-18-init-workout-mvp.md)

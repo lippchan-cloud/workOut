@@ -30,8 +30,8 @@ class SpaHostingTest {
     }
 
     @Test
-    void calendarDeepLinkShouldForwardToSpaHtmlNotApi404() throws Exception {
-        mockMvc.perform(get("/calendar"))
+    void cmsDeepLinkShouldForwardToSpaHtmlNotApi404() throws Exception {
+        mockMvc.perform(get("/cms"))
                 .andExpect(status().isOk())
                 .andExpect(forwardedUrl("/index.html"));
     }

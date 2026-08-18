@@ -9,6 +9,11 @@
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/config/JwtProperties.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/config/SecurityConfig.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/config/SpaFallbackController.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/admin/api/AdminAccountController.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/admin/api/AdminAccountResponse.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/admin/api/package-info.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/admin/application/AdminAccountService.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/admin/application/package-info.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/auth/api/AuthController.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/auth/api/AuthTokenResponse.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/auth/api/CurrentUser.java

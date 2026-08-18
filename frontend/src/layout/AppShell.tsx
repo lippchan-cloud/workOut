@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import type { MouseEvent, ReactNode } from "react";
 
@@ -14,6 +14,7 @@ const TABS = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const onTabClick = (path: string) => (event: MouseEvent) => {
     if (!isAuthenticated) {
@@ -37,14 +38,21 @@ export function AppShell({ children }: { children: ReactNode }) {
           <NavLink
             key={tab.path}
             to={tab.path}
+            end={tab.path === "/"}
             className="app-shell__tab"
             onClick={onTabClick(tab.path)}
           >
-            {({ isActive }) => (
-              <button type="button" className={isActive ? "active" : undefined}>
-                {tab.label}
-              </button>
-            )}
+            {({ isActive }) => {
+              const active =
+                tab.path === "/"
+                  ? location.pathname === "/" || location.pathname.startsWith("/record")
+                  : isActive;
+              return (
+                <button type="button" className={active ? "active" : undefined}>
+                  {tab.label}
+                </button>
+              );
+            }}
           </NavLink>
         ))}
       </nav>

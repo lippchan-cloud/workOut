@@ -6,7 +6,7 @@
 | 文档版本 | v1.0 |
 | 分支 | `feat/init-workout-mvp` |
 | 规范 | [workOut-TDD规范.md](./workOut-TDD规范.md) |
-| OpenSpec | [tasks.md](../openspec/changes/init-workout-mvp/tasks.md) |
+| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md) |
 
 > 规则：未写本页证据，不得勾选 `tasks.md`。
 
@@ -40,6 +40,12 @@
 | 8.3 | openspec validate | N/A | 通过 | §8.3 | 是 |
 | 9.1 | 分组 commit | — | 未执行（需用户明确要求） | — | 否 |
 | 9.2 | 不 push / 无密钥 | N/A | 已遵守 | §9.2 | 是 |
+| CMS-1.1 | 无 Token 列账户 | 已证 | 已证 | §CMS-1.1 | 是 |
+| CMS-1.2 | admin 模块实现 | 承接 1.1 RED | 已证 | §CMS-1.2 | 是 |
+| CMS-1.3 | 业务 API 仍 401 | 既有行为补测 | 已证 | §CMS-1.3 | 是 |
+| CMS-2.1 | `/cms` SPA 回退 | 已证 | 已证 | §CMS-2.1 | 是 |
+| CMS-2.2/2.3 | CMS 页 + 登录入口 | 已证 | 已证 | §CMS-2.x | 是 |
+| CMS-2.4 | 用户ID + 加载/空/错态 | 已证 | 已证 | §CMS-2.4 | 是 |
 
 ---
 
@@ -54,10 +60,13 @@
 
 ## §测试库 — 直连 SQLPub（2026-08-18）
 
-- 变更：`application-test.yml` 指向与主配置相同的 SQLPub MySQL（`inv_doc`）；移除 H2 依赖
-- 隔离：测试注册用户名经 `TestUsernames.unique(prefix)` 追加 8 位 UUID 后缀，避免固定用户名冲突；**不保证回滚**，会在真实库留下测试行
-- Flyway：仅跑未记录迁移（`V1__init.sql` 建 workout 表），不改其它业务表
-- 验证：`cd backend && mvn test`（需外网访问 SQLPub）
+- 变更：`application-test.yml` 指向与主配置相同的 SQLPub MySQL（`inv_doc`）；`pom.xml` 移除 H2；用例经 `TestUsernames.unique(prefix)` 追加 8 位 UUID 后缀
+- 隔离说明：测试会向真实库写入 `user` / `daily_record` / `profile`，**不保证回滚**；靠唯一用户名降低冲突
+- Flyway：仅跑未记录迁移（`V1__init.sql`），不改其它业务表
+- 验证命令：`cd backend && mvn test`（需外网访问 SQLPub）
+- **当前结果：未通过** — 主机 `mysql5.sqlpub.com:3310` TCP 可达，但 JDBC 报  
+  `Access denied for user 'user_lipp'@'218.1.218.251' (using password: YES)`  
+  凭证与文档/`application.yml` 一致；疑为密码失效或 SQLPub 对该公网 IP 未授权。需用户在 SQLPub 控制台核对密码/白名单后重跑 `mvn test`
 
 ---
 
@@ -451,3 +460,137 @@
 - 实现：`V2__PrefixWorkoutTables`（旧表 RENAME，已有新表则跳过，皆无则 CREATE）；`@Table` 改为 `work_out_*`；生产代码迁入 `modules.*`
 - 命令：`cd backend && mvn test`（`WORKOUT_DB_*` 指向本地 MySQL 8；Flyway 日志：`user`→`work_out_user` 等）
 - 结果：**PASS** — Tests run: 26, Failures: 0, Errors: 0；`BUILD SUCCESS`
+
+---
+
+## §记录交互 — 一级大按钮 / 二级选消耗或摄入（2026-08-18）
+
+- 对应：记录 Tab 一级不再并列消耗/摄入表单；大按钮进入后再选类型，再进表单
+- 测试类：`frontend/src/RecordPage.test.tsx`
+
+### RED
+
+- 命令：`cd frontend && npm test -- src/RecordPage.test.tsx`
+- 结果：**FAIL** — Tests 7 failed
+- 失败原因摘要：找不到按钮「开始记录」（一级仍直接渲染消耗/摄入表单）
+
+### GREEN
+
+- 实现：`/` 大按钮 → `/record` 选消耗/摄入 → `/record/consume` 或 `/record/intake` 表单；浏览器返回按层回退；未登录保存 `redirect` 指向当前表单路径
+- 命令：`cd frontend && npm test -- src/RecordPage.test.tsx`；回归 `cd frontend && npm test`
+- 结果：**PASS** — RecordPage 7 tests；全套 Test Files 11 passed，Tests 28 passed
+
+---
+
+## §CMS-1.1 — AdminAccountsListTest（无 Token 列账户）
+
+- 对应规格：`openspec/changes/add-admin-cms-accounts/specs/admin-cms/spec.md` — Unauthenticated admin can list all accounts
+- 测试类：`backend/src/test/java/com/workout/admin/AdminAccountsListTest.java`
+
+### RED
+
+- 命令：`cd backend && mvn -q test -Dtest=AdminAccountsListTest`
+- 结果：**FAIL** — Tests run: 2, Failures: 2
+- 失败原因摘要：`GET /api/v1/admin/accounts` 尚未实现且未放行；Status expected:<200> but was:<401>
+
+### GREEN
+
+- 见 §CMS-1.2
+- 勾选：add-admin-cms-accounts tasks.md 1.1
+
+---
+
+## §CMS-1.2 — admin 模块最小实现
+
+- 实现：`AdminAccountController` / `AdminAccountService` / `AdminAccountResponse`；`ProfileRepository.findByUserIdIn` 批量拼资料；`SecurityConfig` 仅 `GET /api/v1/admin/accounts` permitAll（TEMPORARY 注释）
+- 命令：`cd backend && mvn -q test -Dtest=AdminAccountsListTest`
+- 结果：**PASS**（exit 0）。中间一次因 MockMvc 默认字符集把「阿丽」读成 Latin-1，测试改为 `getContentAsString(UTF_8)` 后绿；接口 JSON 本身已是 UTF-8
+- 勾选：tasks.md 1.2
+
+---
+
+## §CMS-1.3 — 业务 API 仍需 JWT
+
+- 对应规格：Unauthenticated CMS must not weaken user APIs
+- 测试：`AdminAccountsListTest#profileWithoutTokenShouldStillReturn401`、`#dailyRecordsWithoutTokenShouldStillReturn401`
+- 说明：补测既有行为，无独立 RED（无 Token 本就 401）
+- 命令：`cd backend && mvn test -Dtest=AdminAccountsListTest,JwtAuthFilterTest,SpaHostingTest`
+- 结果：**PASS** — Tests run: 10, Failures: 0, Errors: 0；`BUILD SUCCESS`
+- 勾选：tasks.md 1.3
+
+---
+
+## §CMS-2.1 — SpaHostingTest `/cms`
+
+- 对应规格：CMS deep link serves SPA
+- 测试类：`backend/src/test/java/com/workout/common/SpaHostingTest.java`
+
+### RED
+
+- 命令：`cd backend && mvn -q test -Dtest=AdminAccountsListTest,SpaHostingTest`
+- 结果：**FAIL** — `cmsDeepLinkShouldForwardToSpaHtmlNotApi404` Status expected:<200> but was:<404>（`NoResourceFoundException` resource=cms）
+
+### GREEN
+
+- 实现：`SpaFallbackController` 增加 `/cms`
+- 命令：`cd backend && mvn -q test -Dtest=SpaHostingTest`
+- 结果：**PASS**（exit 0）
+- 勾选：tasks.md 2.1
+
+---
+
+## §CMS-2.x — CmsPage + 登录入口
+
+- 对应规格：Temporary CMS page is reachable without login
+- 测试类：`frontend/src/CmsPage.test.tsx`
+
+### RED
+
+- 命令：`cd frontend && npm test -- src/CmsPage.test.tsx`
+- 结果：**FAIL** — Tests 2 failed
+- 失败原因摘要：`/cms` 落入三 Tab 空壳，找不到 `role=status`；登录页无「后台管理」链接
+
+### GREEN
+
+- 实现：独立 `CmsPage`、`App.tsx` 路由 `/cms`、登录页「后台管理」链到 `/cms`、临时横幅
+- 命令：同上
+- 结果：**PASS** — Tests 2 passed
+- 回归：`cd frontend && npm test -- src/CmsPage.test.tsx src/loginFormValidation.test.tsx src/AppShell.test.tsx` → Tests 9 passed
+- 勾选：tasks.md 2.2 / 2.3 / 3.1
+
+---
+
+## §CMS-2.4 — 用户ID 列 + 加载/空态/错误态
+
+- 对应规格：`admin-cms` — Temporary CMS page（用户可见字段含 userId；加载/空/错态）
+- 测试类：`frontend/src/CmsPage.test.tsx`
+
+### RED
+
+- 命令：`cd frontend && npm test -- src/CmsPage.test.tsx`
+- 结果：**FAIL** — Tests 3 failed | 2 passed
+- 失败原因摘要：缺列「用户ID」；缺文案「加载中…」；缺空态「暂无账户」（错误态用例已绿，属既有 `role=alert`）
+
+### GREEN
+
+- 实现：`CmsPage` 增加 `用户ID` 列；`loading` / `暂无账户` / 错误提示；表头始终可见
+- 命令：`cd frontend && npm test -- src/CmsPage.test.tsx`
+- 结果：**PASS** — Tests 5 passed
+- 回归：`cd frontend && npm test -- src/CmsPage.test.tsx src/loginFormValidation.test.tsx src/AppShell.test.tsx` → Tests 12 passed；`cd backend && mvn test -Dtest=AdminAccountsListTest,JwtAuthFilterTest,SpaHostingTest` → Tests run: 10, Failures: 0
+- 勾选：tasks.md 2.4
+
+---
+
+## §CMS-3.2 — openspec validate
+
+- 命令：`openspec validate add-admin-cms-accounts`
+- 结果：`Change 'add-admin-cms-accounts' is valid`
+- 勾选：tasks.md 3.2
+
+---
+
+## §CMS-3.3 — 不提交 git
+
+- 未执行 `git commit` / `git push`；不纳入 `backend/target/**`
+- 勾选：tasks.md 3.3
+

@@ -73,6 +73,10 @@ export function LoginPage() {
         <p className="auth-card__footer">
           还没有账号？ <Link to="/register">去注册</Link>
         </p>
+        <p className="auth-card__footer auth-card__cms">
+          <Link to="/cms">后台管理</Link>
+          <span> （临时开放，后续将加鉴权）</span>
+        </p>
       </div>
     </div>
   );
