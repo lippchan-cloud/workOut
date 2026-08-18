@@ -179,3 +179,7 @@ Final response to the user should be concise:
 - What changed.
 - How it was verified.
 - Any remaining risk or missing verification.
+
+## Companion script
+
+飞书工作状态推送脚本：`./doc/scripts/notify_feishu.py`

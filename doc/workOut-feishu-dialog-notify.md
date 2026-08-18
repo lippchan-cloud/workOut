@@ -48,7 +48,7 @@ Keep each section concise (a few sentences or short bullets). Never put secrets,
 Use the bundled script — do not invent curl each time.
 
 ```bash
-/Users/lipp/.cursor/skills/feishu-dialog-notify/scripts/send_async.sh \
+./doc/scripts/send_async.sh \
   --purpose "用户请求摘要" \
   --result "完成了什么" \
   --plan "怎么做的"
@@ -126,4 +126,4 @@ Bot hook 缺少 `msg_type` 会返回 `params error, msg_type need`。脚本固�
 
 ## Optional
 
-- More CLI examples: [examples.md](examples.md)
+- More CLI examples: [workOut-feishu-dialog-notify-examples.md](workOut-feishu-dialog-notify-examples.md)
