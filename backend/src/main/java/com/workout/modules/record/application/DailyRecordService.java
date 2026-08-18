@@ -215,16 +215,24 @@ public class DailyRecordService {
     }
 
     /**
-     * 导出选中日 CSV，含 UTF-8 BOM；仅当前用户数据。
+     * 按已解析区间导出 CSV，含 UTF-8 BOM；仅当前用户数据。
      *
      * @param userId JWT 用户主键
-     * @param date   选中日
+     * @param period 已解析筛选区间
      * @return CSV 字节
      */
     @Transactional(readOnly = true)
-    public byte[] exportCsv(Long userId, LocalDate date) {
-        log.info("[日记录] exportCsv start userId={}, date={}", userId, date);
-        List<DailyRecordResponse> list = listByDate(userId, date);
+    public byte[] exportCsv(Long userId, RecordQueryPeriod period) {
+        long startMs = System.currentTimeMillis();
+        log.info(
+                "[日记录] exportCsv start userId={}, date={}, yearMonth={}, from={}, to={}",
+                userId,
+                period.getDate(),
+                period.getYearMonth(),
+                period.getFrom(),
+                period.getTo());
+        // 复用区间列表查询，保证导出与列表同一批数据
+        List<DailyRecordResponse> list = listByPeriod(userId, period);
         StringBuilder body = new StringBuilder();
         body.append("记录时间,类型,内容\n");
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(SHANGHAI);
@@ -241,8 +249,28 @@ public class DailyRecordService {
         byte[] out = new byte[bom.length + content.length];
         System.arraycopy(bom, 0, out, 0, bom.length);
         System.arraycopy(content, 0, out, bom.length, content.length);
-        log.info("[日记录] exportCsv done userId={}, date={}, rows={}, bytes={}", userId, date, list.size(), out.length);
+        log.info(
+                "[日记录] exportCsv done userId={}, from={}, to={}, rows={}, bytes={}, elapsedMs={}",
+                userId,
+                period.getFrom(),
+                period.getTo(),
+                list.size(),
+                out.length,
+                System.currentTimeMillis() - startMs);
         return out;
+    }
+
+    /**
+     * 导出选中日 CSV，含 UTF-8 BOM；仅当前用户数据。
+     *
+     * @param userId JWT 用户主键
+     * @param date   选中日
+     * @return CSV 字节
+     */
+    @Transactional(readOnly = true)
+    public byte[] exportCsv(Long userId, LocalDate date) {
+        log.info("[日记录] exportCsv start userId={}, date={}", userId, date);
+        return exportCsv(userId, resolvePeriod(date, null, null, null));
     }
 
     /**

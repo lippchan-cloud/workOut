@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -39,6 +39,34 @@ describe("csv export click", () => {
     );
     await user.click(screen.getByRole("button", { name: "导出 CSV" }));
     expect(clickSpy).toHaveBeenCalled();
+  });
+
+  it("exports csv with yearMonth in month mode", async () => {
+    localStorage.setItem("workout_token", "tok");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ code: 200, data: { list: [] } }),
+      blob: async () => new Blob(["csv"]),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:mock"),
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/calendar"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    await user.click(screen.getByRole("button", { name: "按月" }));
+    fireEvent.change(screen.getByLabelText("选择月份"), { target: { value: "2026-08" } });
+    await user.click(screen.getByRole("button", { name: "导出 CSV" }));
+    const exportUrl = fetchMock.mock.calls.map((call) => String(call[0])).find((url) => url.includes("exportCsv"));
+    expect(exportUrl).toContain("yearMonth=2026-08");
+    expect(exportUrl).not.toContain("date=");
   });
 
   it("redirects to login when unauthenticated export clicked", async () => {

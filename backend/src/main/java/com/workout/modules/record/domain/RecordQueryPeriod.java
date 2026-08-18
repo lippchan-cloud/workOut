@@ -64,6 +64,19 @@ public final class RecordQueryPeriod {
     }
 
     /**
+     * CSV 下载文件名：整月 `workout-YYYY-MM.csv`；同日 `workout-YYYY-MM-DD.csv`；跨日用下划线连接。
+     */
+    public String csvFilename() {
+        if (yearMonth != null) {
+            return "workout-" + yearMonth + ".csv";
+        }
+        if (from.equals(to)) {
+            return "workout-" + from + ".csv";
+        }
+        return "workout-" + from + "_" + to + ".csv";
+    }
+
+    /**
      * 单日模式下的选中日；非单日为 null。
      */
     public LocalDate getDate() {

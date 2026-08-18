@@ -91,22 +91,38 @@ public class DailyRecordController {
     }
 
     /**
-     * 按日导出当前用户 CSV（UTF-8 BOM）。
+     * 按当前筛选导出当前用户 CSV（UTF-8 BOM）。
      */
     @GetMapping("/exportCsv")
     public void exportCsv(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth yearMonth,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             HttpServletResponse response)
             throws IOException {
         AuthPrincipal principal = CurrentUser.require();
-        log.info("[日记录] DailyRecordController.exportCsv start userId={}, date={}", principal.getUserId(), date);
-        byte[] csv = dailyRecordService.exportCsv(principal.getUserId(), date);
-        String filename = "workout-" + date + ".csv";
+        log.info(
+                "[日记录] DailyRecordController.exportCsv start userId={}, date={}, yearMonth={}, from={}, to={}",
+                principal.getUserId(),
+                date,
+                yearMonth,
+                from,
+                to);
+        // 与列表共用 period 解析，保证筛选一致且带 JWT userId
+        RecordQueryPeriod period = dailyRecordService.resolvePeriod(date, yearMonth, from, to);
+        byte[] csv = dailyRecordService.exportCsv(principal.getUserId(), period);
+        // 文件名随模式变化：整月 YYYY-MM，同日 YYYY-MM-DD，跨日用下划线
+        String filename = period.csvFilename();
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType("text/csv; charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+        // 写出带 BOM 的 CSV 字节
         response.getOutputStream().write(csv);
-        log.info("[日记录] DailyRecordController.exportCsv done userId={}, date={}, bytes={}",
-                principal.getUserId(), date, csv.length);
+        log.info(
+                "[日记录] DailyRecordController.exportCsv done userId={}, filename={}, bytes={}",
+                principal.getUserId(),
+                filename,
+                csv.length);
     }
 }

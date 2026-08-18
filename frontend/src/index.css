@@ -491,6 +491,36 @@ button {
 }
 
 /* —— Calendar —— */
+.mode-switch {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.mode-switch .btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.filter-field input {
+  width: 100%;
+  border: 1px solid var(--stroke-strong);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--text);
+  font: inherit;
+  padding: 0.7rem 0.8rem;
+}
+
 .week-toolbar {
   display: flex;
   gap: 0.5rem;

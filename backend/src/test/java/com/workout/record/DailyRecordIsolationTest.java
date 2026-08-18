@@ -43,6 +43,20 @@ class DailyRecordIsolationTest {
                 .andExpect(jsonPath("$.data.list.length()").value(0));
     }
 
+    @Test
+    void userBMustNotSeeUserARecordsForYearMonth() throws Exception {
+        AuthUser userA = register(TestUsernames.unique("iso_ym_a"), "secret12");
+        AuthUser userB = register(TestUsernames.unique("iso_ym_b"), "secret12");
+        createConsume(userA.token(), "A的八月", "2026-08-15T07:30:00+08:00");
+
+        mockMvc.perform(get("/api/v1/dailyRecords")
+                        .param("yearMonth", "2026-08")
+                        .header("Authorization", "Bearer " + userB.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.list").isArray())
+                .andExpect(jsonPath("$.data.list.length()").value(0));
+    }
+
     private void createConsume(String token, String content, String recordedAt) throws Exception {
         mockMvc.perform(post("/api/v1/dailyRecords")
                         .header("Authorization", "Bearer " + token)

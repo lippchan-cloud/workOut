@@ -6,7 +6,7 @@
 | 文档版本 | v1.0 |
 | 分支 | `feat/init-workout-mvp` |
 | 规范 | [workOut-TDD规范.md](./workOut-TDD规范.md) |
-| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md) |
+| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md)、[extend-calendar-month-range-csv tasks](../openspec/changes/extend-calendar-month-range-csv/tasks.md) |
 
 > 规则：未写本页证据，不得勾选 `tasks.md`。
 
@@ -46,6 +46,16 @@
 | CMS-2.1 | `/cms` SPA 回退 | 已证 | 已证 | §CMS-2.1 | 是 |
 | CMS-2.2/2.3 | CMS 页 + 登录入口 | 已证 | 已证 | §CMS-2.x | 是 |
 | CMS-2.4 | 用户ID + 加载/空/错态 | 已证 | 已证 | §CMS-2.4 | 是 |
+| CAL-1.1 | 月/区间列表失败测试 | 已证 | 见 1.2 | §CAL-1.1 | 是 |
+| CAL-1.2 | 解析 yearMonth/from/to | 承接 1.1 | 已证 | §CAL-1.2 | 是 |
+| CAL-1.3 | 互斥参数 400 | 已证 | 已证 | §CAL-1.3 | 是 |
+| CAL-1.4 | yearMonth 用户隔离 | 既有隔离延续 | 已证 | §CAL-1.4 | 是 |
+| CAL-2.1–2.3 | 期间 CSV | 已证 | 已证 | §CAL-2.x | 是 |
+| CAL-3.1–3.3 | 日历三种模式 | 已证 | 已证 | §CAL-3.x | 是 |
+| CAL-4.1–4.2 | 导出跟随筛选 | 已证 | 已证 | §CAL-4.x | 是 |
+| CAL-5.1 | 相关回归 | N/A | 已证 | §CAL-5.1 | 是 |
+| CAL-5.2 | openspec validate | N/A | 通过 | §CAL-5.2 | 是 |
+| CAL-5.3 | 不提交 git | N/A | 本会话未执行 commit/push | §CAL-5.3 | 是 |
 
 ---
 
@@ -613,3 +623,143 @@
 - 实现：H2 依赖、`application-docker.yml`、V2 改用 DatabaseMetaData + `ALTER TABLE ... RENAME TO`；Dockerfile 多阶段构建
 - 命令：同上
 - 结果：**PASS** — Tests run: 1, Failures: 0
+
+---
+
+## §CAL-1.1 — 月/区间列表 RED
+
+- 对应规格：`extend-calendar-month-range-csv/specs/daily-record` — List by month / inclusive range
+- 测试类：`backend/src/test/java/com/workout/record/DailyRecordQueryTest.java`
+
+### RED
+
+- 命令：`cd backend && mvn -q test -Dtest=DailyRecordQueryTest`
+- 结果：**FAIL** — Tests run: 5, Failures: 4
+- 失败原因：`yearMonth`/`from`/`to` 请求仍要求必填 `date`，`MissingServletRequestParameterException` → HTTP 500（功能未实现）
+
+---
+
+## §CAL-1.2 — 解析 yearMonth / from+to GREEN
+
+- 实现：`RecordQueryPeriod` + `DailyRecordService.resolvePeriod`/`listByPeriod`；Controller `list` 三组可选参数；一次仓储区间查询
+- GREEN 命令：`cd backend && mvn -q test -Dtest=DailyRecordQueryTest`
+- GREEN 结果：**PASS** — Tests run: 5, Failures: 0
+- 勾选：tasks.md 1.1 / 1.2
+
+---
+
+## §CAL-1.3 — 互斥与区间校验
+
+- 对应规格：Period query parameters are mutually exclusive and validated
+- 测试类：同上 `DailyRecordQueryTest`
+
+### RED
+
+- 命令：`cd backend && mvn -q test -Dtest=DailyRecordQueryTest#mixingDateAndYearMonthShouldReturn400+fromAfterToShouldReturn400+rangeLongerThan366DaysShouldReturn400+dateOnlyQueryShouldStillReturn200`
+- 结果：**FAIL** — Tests run: 4, Failures: 3（混用/`from>to`/>366 天仍 200）；`dateOnlyQueryShouldStillReturn200` 已绿（既有契约）
+
+### GREEN
+
+- 实现：`resolvePeriod` 恰好一种模式；`from` 不得晚于 `to`；`ChronoUnit.DAYS.between > 365` → 400 中文 msg
+- 命令：`cd backend && mvn -q test -Dtest=DailyRecordQueryTest`
+- 结果：**PASS** — Tests run: 9, Failures: 0
+- 勾选：tasks.md 1.3
+
+---
+
+## §CAL-1.4 — yearMonth 用户隔离
+
+- 对应规格：Period queries remain isolated per user
+- 测试类：`backend/src/test/java/com/workout/record/DailyRecordIsolationTest.java`
+
+### RED / GREEN
+
+- 命令：`cd backend && mvn -q test -Dtest=DailyRecordIsolationTest`
+- 结果：**PASS** — Tests run: 2, Failures: 0（`listByPeriod` 始终带 JWT `userId`，新 `yearMonth` 路径继承隔离；属既有行为补测）
+- 勾选：tasks.md 1.4
+
+---
+
+## §CAL-2.x — 期间 CSV
+
+- 对应规格：`csv-export` — Export uses same period; empty period header-only; period export validates
+- 测试类：`backend/src/test/java/com/workout/record/CsvExportTest.java`
+
+### RED
+
+- 命令：`cd backend && mvn -q test -Dtest=CsvExportTest`
+- 结果：**FAIL** — CsvExportTest Tests run: 9, Failures: 5
+- 失败原因：`yearMonth`/`from`/`to` 导出仍要求 `date`（500）；混用 `date`+`yearMonth` 仍按日导出 200；`yearMonth` 无 Token 已 401（既有鉴权）
+
+### GREEN
+
+- 实现：`exportCsv` 与 list 共用 `resolvePeriod`；`RecordQueryPeriod.csvFilename()`
+- 命令：`cd backend && mvn -q test -Dtest=DailyRecordQueryTest,DailyRecordIsolationTest,CsvExportTest`
+- 结果：**PASS** — Query 9 / Isolation 2 / Csv 10，Failures: 0
+- 勾选：tasks.md 2.1 / 2.2 / 2.3
+
+---
+
+## §CAL-3.x — 日历三种模式
+
+- 对应规格：`calendar-view` — month / jump date / custom range
+- 测试类：`frontend/src/CalendarPage.test.tsx`
+
+### RED
+
+- 命令：`cd frontend && npm test -- src/CalendarPage.test.tsx src/CsvExportClick.test.tsx`
+- 结果：**FAIL** — Tests 5 failed | 5 passed
+- 失败原因：找不到「按月」「自定义」「跳转到」
+
+### GREEN
+
+- 实现：`CalendarPage` 按日/按月/自定义；月份控件、跳转日期、from/to；空态三条文案
+- 命令：`cd frontend && npm test -- src/CalendarPage.test.tsx src/CsvExportClick.test.tsx src/calendar/week.test.ts`
+- 结果：**PASS** — Tests 12 passed
+- 勾选：tasks.md 3.1 / 3.2 / 3.3
+
+---
+
+## §CAL-4.x — 导出跟随筛选
+
+- 对应规格：Month mode UI download uses yearMonth；unauthenticated redirect
+- 测试类：`frontend/src/CsvExportClick.test.tsx`
+
+### RED
+
+- 与 §CAL-3.x 同一次命令：按月导出找不到「按月」；未登录导出跳转用例已绿（回归未被破坏）
+
+### GREEN
+
+- 实现：导出 URL 使用与列表相同的 `periodQuery()`
+- 命令：同上前端命令
+- 结果：**PASS**
+- 勾选：tasks.md 4.1 / 4.2
+
+---
+
+## §CAL-5.1 — 相关回归
+
+- 命令：`cd backend && mvn -q test -Dtest=DailyRecordQueryTest,DailyRecordIsolationTest,CsvExportTest`
+- 结果：**PASS** — Query Tests run: 9；Isolation Tests run: 2；Csv Tests run: 10；Failures: 0
+- 命令：`cd frontend && npm test -- src/CalendarPage.test.tsx src/CsvExportClick.test.tsx`
+- 结果：**PASS** — Tests 10 passed
+- 勾选：tasks.md 5.1
+
+---
+
+## §CAL-5.2 — openspec validate
+
+- 命令：`openspec validate extend-calendar-month-range-csv`
+- 结果：`Change 'extend-calendar-month-range-csv' is valid`
+- 勾选：tasks.md 5.2
+
+---
+
+## §CAL-5.3 — 不提交 git
+
+- 本实现会话未执行 `git commit` / `git push`；未改 `openspec/changes/add-admin-cms-accounts`
+- 说明：工作区另有既有提交 `8f16b9e` / `3d57fe0`（含 `backend/target/**` 与 Docker 文件），非本 apply 会话所执行
+- 勾选：tasks.md 5.3
+
+

@@ -22,10 +22,11 @@ RUN mvn -q -B -DskipTests package \
     && mv target/workout-*.jar /build/app.jar
 
 # —— Stage 3: 运行时 ——
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 RUN mkdir -p /data \
-    && addgroup -S workout && adduser -S workout -G workout \
+    && groupadd -r workout \
+    && useradd -r -g workout workout \
     && chown -R workout:workout /data /app
 COPY --from=backend /build/app.jar /app/app.jar
 USER workout
@@ -34,5 +35,5 @@ ENV SPRING_PROFILES_ACTIVE=docker \
     WORKOUT_H2_PATH=/data/workout
 VOLUME ["/data"]
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=3 \
-  CMD wget -q -O /dev/null http://127.0.0.1:8080/api/v1/health || exit 1
+  CMD bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf "GET /api/v1/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && cat <&3 | grep -q UP'
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

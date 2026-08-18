@@ -28,9 +28,29 @@ export function addWeeks(date: Date, weeks: number): Date {
   return next;
 }
 
+/**
+ * 格式化为本地 YYYY-MM-DD。
+ */
 export function formatYmd(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+/**
+ * 将 YYYY-MM-DD 解析为本地日期，避免 UTC 偏移。
+ */
+export function parseYmd(ymd: string): Date {
+  const [year, month, day] = ymd.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * 本地年月 YYYY-MM，供按月筛选默认值。
+ */
+export function formatYearMonth(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
 }
