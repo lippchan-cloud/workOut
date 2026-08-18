@@ -4,8 +4,9 @@
 | --- | --- |
 | 产品 | workOut |
 | 文档类型 | 上下文工程架构 |
-| 版本 | v1.0 |
+| 版本 | v1.1 |
 | 日期 | 2026-08-18 |
+| 配套 | 选型与算法详见 [workOut-AI方案.md](./workOut-AI方案.md) 「上下文压缩与向量化」 |
 
 ## 目标
 
@@ -15,7 +16,7 @@
 
 1. **不上独立向量库**（Milvus / PGVector / 外部检索服务均不做）。
 2. **不上 Redis** 存向量或限流状态。
-3. 压缩摘要、hash、简易 embedding **全部落 MySQL**。
+3. 压缩摘要、SHA-256 去重、hashing-trick 简易 embedding **全部落 MySQL**（不上独立向量库的选型评估见 AI 方案文档）。
 4. 一切查询必须带 **userId**，禁止跨用户复用 chunk。
 
 ## 表：`work_out_ai_context_chunk`
@@ -33,7 +34,7 @@
 1. 从分享快照取：显示名、区间、事项（截断 content、限制条数）、曲线首尾身高体重。
 2. 文本首行强制 `userId={id}`。
 3. 计算 `embed_hash`；`findFirstByUserIdAndEmbedHash` 命中则复用（**仅同 userId**）。
-4. 未命中：生成 `embedding_json`（固定维度 bag-of-hash），与摘要一并 `INSERT`。
+4. 未命中：生成 `embedding_json`（32 维 bag-of-hash），与摘要一并 `INSERT`。当前拼 prompt **不按向量距离召回**，按时间新→旧 + 1000 字上限。
 5. 将 `summary_text` 与同用户历史压缩块拼入 prompt：当前优先，总长上限 **1000** 字（超出则不再追加更早历史；当前本身超限不截断），再交给 `PhysioScientistPrompts.userMessage`。模型必须输出简体中文 Markdown。
 
 ## 分享异步流水线
