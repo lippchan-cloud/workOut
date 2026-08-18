@@ -762,4 +762,21 @@
 - 说明：工作区另有既有提交 `8f16b9e` / `3d57fe0`（含 `backend/target/**` 与 Docker 文件），非本 apply 会话所执行
 - 勾选：tasks.md 5.3
 
+---
+
+## §Docker — docker profile 改连项目 MySQL（去 H2）
+
+- 对应：镜像不再内嵌 H2，与 `application.yml` 同套 SQLPub MySQL
+- 测试类：`backend/src/test/java/com/workout/docker/DockerProfileBootstrapTest.java`
+
+### RED
+
+- 命令：`cd backend && mvn -q test -Dtest=DockerProfileBootstrapTest`
+- 结果：**ERROR** — docker profile 仍指向 `jdbc:h2:file:/data/workout`，无法创建 `/data`（Read-only file system）
+
+### GREEN
+
+- 实现：`application-docker.yml` 改为与主配置相同的 MySQL；Dockerfile 去掉 `WORKOUT_H2_PATH`/H2 volume；`pom.xml` 移除 H2；compose/README 同步
+- 命令：同上
+- 结果：**PASS** — Tests run: 1, Failures: 0（JDBC `jdbc:mysql://mysql5.sqlpub.com:3310/inv_doc`，health UP）
 

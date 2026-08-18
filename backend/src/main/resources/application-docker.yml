@@ -1,20 +1,24 @@
-# Docker / 单机镜像默认：内嵌 H2 文件库，无需外部 MySQL。
-# 数据目录可用环境变量 WORKOUT_H2_PATH 覆盖（默认 /data/workout）。
+# Docker 镜像与本地开发共用同一套 MySQL（见 application.yml / WORKOUT_DB_*）。
+# 默认指向 SQLPub 公网实例；若改连本机 MySQL，容器内请用 host.docker.internal，勿用 localhost。
 spring:
   datasource:
-    url: jdbc:h2:file:${WORKOUT_H2_PATH:/data/workout};MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;AUTO_SERVER=FALSE
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    url: ${WORKOUT_DB_URL:jdbc:mysql://mysql5.sqlpub.com:3310/inv_doc?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${WORKOUT_DB_USER:user_lipp}
+    password: ${WORKOUT_DB_PASSWORD:pgGJlfNr1pSJbcq1}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: validate
-    database-platform: org.hibernate.dialect.H2Dialect
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Shanghai
   flyway:
     enabled: true
     baseline-on-migrate: true
     baseline-version: 1
-    baseline-description: Docker H2 starts at V2 work_out_* tables
+    baseline-description: Shared inv_doc schema already has other tables
 
 workout:
   jwt:

@@ -13,26 +13,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * 验证 docker profile 可在无外部 MySQL 时启动：内嵌 H2 + Flyway 产出 work_out_*，健康检查可用。
+ * 验证 docker 运行路径使用项目 MySQL（与 application.yml 同套），而非内嵌 H2；健康检查可用。
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("docker")
 class DockerProfileBootstrapTest {
-
-    @DynamicPropertySource
-    static void inMemoryH2(DynamicPropertyRegistry registry) {
-        registry.add(
-                "spring.datasource.url",
-                () ->
-                        "jdbc:h2:mem:workout_docker;MODE=MySQL;DATABASE_TO_LOWER=TRUE;"
-                                + "CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1");
-    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -40,19 +29,29 @@ class DockerProfileBootstrapTest {
     @Autowired
     private DataSource dataSource;
 
+    /**
+     * docker profile 不得落到 H2：JDBC 须为 mysql，且 Flyway 后存在 work_out_user，健康检查 UP。
+     */
     @Test
-    void dockerProfileShouldBootWithEmbeddedH2AndExposeHealth() throws Exception {
+    void dockerProfileShouldUseMysqlDatasourceAndExposeHealth() throws Exception {
+        try (Connection connection = dataSource.getConnection()) {
+            String jdbcUrl = connection.getMetaData().getURL();
+            assertThat(jdbcUrl)
+                    .as("docker profile must use project MySQL, not embedded H2")
+                    .startsWith("jdbc:mysql:")
+                    .doesNotContain("h2");
+
+            try (ResultSet rs =
+                    connection
+                            .getMetaData()
+                            .getTables(connection.getCatalog(), null, "work_out_user", new String[] {"TABLE"})) {
+                assertThat(rs.next()).as("work_out_user must exist after Flyway on docker/MySQL path").isTrue();
+            }
+        }
+
         mockMvc.perform(get("/api/v1/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.status").value("UP"));
-
-        try (Connection connection = dataSource.getConnection();
-                ResultSet rs =
-                        connection
-                                .getMetaData()
-                                .getTables(connection.getCatalog(), null, "work_out_user", new String[] {"TABLE"})) {
-            assertThat(rs.next()).as("work_out_user must exist after Flyway V2 on docker profile").isTrue();
-        }
     }
 }

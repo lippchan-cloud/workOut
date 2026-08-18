@@ -2,6 +2,7 @@
 # 用法：
 #   docker build -t workout:local .
 #   docker run --rm -p 8080:8080 workout:local
+# 默认连 application.yml / docker profile 同一套 MySQL（SQLPub）；可用 WORKOUT_DB_* 覆盖。
 
 # —— Stage 1: 构建 React SPA ——
 FROM node:20-alpine AS frontend
@@ -24,16 +25,14 @@ RUN mvn -q -B -DskipTests package \
 # —— Stage 3: 运行时 ——
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
-RUN mkdir -p /data \
-    && groupadd -r workout \
+RUN groupadd -r workout \
     && useradd -r -g workout workout \
-    && chown -R workout:workout /data /app
+    && chown -R workout:workout /app
 COPY --from=backend /build/app.jar /app/app.jar
 USER workout
 EXPOSE 8080
-ENV SPRING_PROFILES_ACTIVE=docker \
-    WORKOUT_H2_PATH=/data/workout
-VOLUME ["/data"]
+# docker profile 与本地开发共用同一套 MySQL datasource（非内嵌 H2）
+ENV SPRING_PROFILES_ACTIVE=docker
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=3 \
   CMD bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf "GET /api/v1/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && cat <&3 | grep -q UP'
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

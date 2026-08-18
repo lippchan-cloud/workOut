@@ -35,31 +35,41 @@ cd ../backend && mvn spring-boot:run
 
 ### Docker（推荐给「只想打开浏览器用」）
 
-单镜像内嵌 H2，无需外部 MySQL：
+单镜像连**项目同一套 MySQL**（默认 SQLPub `inv_doc`，与 `application.yml` 一致），**不用**容器内嵌 H2。需本机/容器网络能访问该库。
 
 ```bash
 docker build -t workout:local .
 docker run --rm -p 8080:8080 workout:local
 # 浏览器打开 http://localhost:8080
+# 若本机 8080 被占用：-p 18080:8080 → http://localhost:18080
 ```
 
-可选 Compose（数据目录挂载到 `./data`）：
+可选 Compose：
 
 ```bash
 docker compose up --build
 ```
 
-镜像默认 `SPRING_PROFILES_ACTIVE=docker`。可选环境变量：`WORKOUT_JWT_SECRET`、`WORKOUT_H2_PATH`（默认 `/data/workout`）。本地开发仍可用下方 MySQL 默认配置（不激活 docker profile）。
+镜像默认 `SPRING_PROFILES_ACTIVE=docker`，datasource 与本地开发相同。可选环境变量：`WORKOUT_DB_*`、`WORKOUT_JWT_SECRET`。
+
+若改连**本机 MySQL**（而非 SQLPub），容器内主机名请用 `host.docker.internal`（勿用 `localhost`，那会指向容器自身），例如：
+
+```bash
+docker run --rm -p 18080:8080 \
+  -e WORKOUT_DB_URL='jdbc:mysql://host.docker.internal:3306/inv_doc?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai' \
+  -e WORKOUT_DB_USER=... \
+  -e WORKOUT_DB_PASSWORD=... \
+  workout:local
+```
 
 数据库连接与 JWT 默认值已写入 `backend/src/main/resources/application.yml`（私有仓）。不设环境变量即可启动；下列变量仅为可选覆盖：
 
 | 变量 | 说明 |
 | --- | --- |
-| `WORKOUT_DB_URL` | 可选，覆盖 JDBC URL（非 docker profile） |
-| `WORKOUT_DB_USER` | 可选，覆盖数据库用户（非 docker profile） |
-| `WORKOUT_DB_PASSWORD` | 可选，覆盖数据库密码（非 docker profile） |
+| `WORKOUT_DB_URL` | 可选，覆盖 JDBC URL（含 docker profile） |
+| `WORKOUT_DB_USER` | 可选，覆盖数据库用户 |
+| `WORKOUT_DB_PASSWORD` | 可选，覆盖数据库密码 |
 | `WORKOUT_JWT_SECRET` | 可选，覆盖 JWT HMAC 密钥 |
-| `WORKOUT_H2_PATH` | docker profile 下 H2 文件路径（默认 `/data/workout`） |
 
 ## 测试命令
 
