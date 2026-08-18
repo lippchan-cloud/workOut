@@ -4,7 +4,7 @@
 | --- | --- |
 | 产品名称 | workOut |
 | 文档类型 | 技术架构 |
-| 文档版本 | v1.1 |
+| 文档版本 | v1.2 |
 | 日期 | 2026-08-18 |
 | 依据 | [workOut-产品文档.md](./workOut-产品文档.md)、[workOut-功能文档.md](./workOut-功能文档.md)、`README.md` |
 | 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/design.md) |
@@ -37,7 +37,7 @@ flowchart TB
   end
 
   subgraph Data["数据层"]
-    MySQL[("MySQL<br/>user / daily_record / profile")]
+    MySQL[("MySQL<br/>work_out_user / work_out_daily_record / work_out_profile")]
   end
 
   Browser -->|页面与静态资源| Static
@@ -63,7 +63,22 @@ flowchart TB
 | API | `/api/v1/...`，统一响应 `{ code, msg, data }`，携带 `requestId`、`timestamp` |
 | AuthService | 注册（哈希密码）、登录发 Token |
 | 业务 Service | 从 SecurityContext / Token 取 userId；按用户过滤查询与写入 |
-| MySQL | `user`、`daily_record`、`profile` 持久化 |
+| MySQL | `work_out_user`、`work_out_daily_record`、`work_out_profile` 持久化（Flyway history 表不改名前缀） |
+
+后端包按模块分层（`com.workout`）：
+
+| 包 | 边界 |
+| --- | --- |
+| `config/` | Security、JWT 配置、SPA 回退、全局异常处理 |
+| `common/` | `ApiResponse` / `ApiRequest`、业务/未授权异常、健康检查 |
+| `modules.auth.api` | Auth Controller 与 DTO；`CurrentUser` 只读 JWT |
+| `modules.auth.application` | `AuthService` 编排 |
+| `modules.auth.domain` | `AuthPrincipal` |
+| `modules.auth.infrastructure` | `UserEntity`/`UserRepository`、`JwtService`、`JwtAuthFilter` |
+| `modules.record.*` | 日记录 + CSV 导出（api / application / domain / infrastructure） |
+| `modules.profile.*` | 个人资料（api / application / infrastructure） |
+
+业务 `userId` 只从 JWT 进入应用服务，禁止信任客户端传入身份。
 
 ### 1.2 部署与启动形态
 
@@ -124,9 +139,9 @@ flowchart LR
   end
 
   subgraph Persistence
-    T0[("user")]
-    T1[("daily_record")]
-    T2[("profile")]
+    T0[("work_out_user")]
+    T1[("work_out_daily_record")]
+    T2[("work_out_profile")]
   end
 
   C0 --> S0
@@ -182,7 +197,7 @@ sequenceDiagram
     U->>SPA: 登录或注册
     SPA->>A: POST /api/v1/auth/login 或 register
     A->>S: 校验 / 建用户 / 签 JWT
-    S->>DB: 读或写 user
+    S->>DB: 读或写 work_out_user
     A-->>SPA: { token, userId, username }
     SPA->>SPA: 存 Token；跳转 redirect
   else 有 Token
@@ -209,7 +224,7 @@ sequenceDiagram
     P->>F: POST /api/v1/dailyRecords + Bearer
     F->>A: 注入 userId
     A->>S: 业务校验 + 落库（绑定 userId）
-    S->>DB: INSERT daily_record
+    S->>DB: INSERT work_out_daily_record
     A-->>P: { code:200, data }
     P-->>U: 「已记录」
   end

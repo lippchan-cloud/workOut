@@ -58,7 +58,7 @@ class DailyRecordCreateTest {
                 .path("id")
                 .asLong();
         Long userId = jdbcTemplate.queryForObject(
-                "select user_id from daily_record where id = ?", Long.class, recordId);
+                "select user_id from work_out_daily_record where id = ?", Long.class, recordId);
         assertThat(userId).isEqualTo(alice.userId());
     }
 

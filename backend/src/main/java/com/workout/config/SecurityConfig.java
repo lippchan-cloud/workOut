@@ -1,7 +1,6 @@
 package com.workout.config;
 
-import com.workout.auth.JwtAuthFilter;
-import com.workout.auth.JwtProperties;
+import com.workout.modules.auth.infrastructure.JwtAuthFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

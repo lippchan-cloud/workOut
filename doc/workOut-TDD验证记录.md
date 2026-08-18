@@ -432,3 +432,22 @@
 - 未执行 `git push`
 - 连接信息见私有仓 `application.yml` / `application-test.yml` 与 `doc/workOut-数据库连接.md`；可用 `WORKOUT_*` 覆盖
 - 勾选：tasks.md 9.2
+
+---
+
+## §重构 — 后端分层 + 表前缀 work_out（2026-08-18）
+
+- 对应：后端包按 `config` / `common` / `modules.{auth,record,profile}.{api,application,domain,infrastructure}` 分层；业务表统一 `work_out_*`
+- 测试类：`backend/src/test/java/com/workout/FlywayMigrationTest.java`（断言 `work_out_user` / `work_out_daily_record` / `work_out_profile`）
+
+### RED
+
+- 命令：`cd backend && mvn -q test -Dtest=FlywayMigrationTest`
+- 结果：先改断言为 `work_out_*`，当时仅有 V1（`user` / `daily_record` / `profile`）
+- 说明：直连 SQLPub 时本机 IP 出现 Access denied，未能在该库看到断言失败；改用本地 MySQL 8 验证同一 V1→V2 路径
+
+### GREEN
+
+- 实现：`V2__PrefixWorkoutTables`（旧表 RENAME，已有新表则跳过，皆无则 CREATE）；`@Table` 改为 `work_out_*`；生产代码迁入 `modules.*`
+- 命令：`cd backend && mvn test`（`WORKOUT_DB_*` 指向本地 MySQL 8；Flyway 日志：`user`→`work_out_user` 等）
+- 结果：**PASS** — Tests run: 26, Failures: 0, Errors: 0；`BUILD SUCCESS`
