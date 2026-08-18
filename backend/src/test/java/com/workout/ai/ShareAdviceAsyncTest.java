@@ -7,19 +7,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workout.config.AdminProperties;
 import com.workout.modules.ai.application.StubDeepSeekClient;
-import com.workout.modules.ai.domain.AiCallPurpose;
-import com.workout.modules.ai.infrastructure.AiCallLogEntity;
-import com.workout.modules.ai.infrastructure.AiCallLogRepository;
-import com.workout.modules.ai.infrastructure.UserApiKeyEntity;
+import com.workout.modules.ai.infrastructure.ApiKeyPoolRepository;
 import com.workout.modules.ai.infrastructure.UserApiKeyRepository;
 import com.workout.modules.auth.infrastructure.UserEntity;
 import com.workout.modules.auth.infrastructure.UserRepository;
+import com.workout.support.TestApiKeys;
 import com.workout.support.TestUsernames;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -32,6 +28,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 七期：无 key / stub 异步建议 / userId 边界（窄测，Stub 禁外网）。
@@ -57,7 +54,13 @@ class ShareAdviceAsyncTest {
     private UserApiKeyRepository userApiKeyRepository;
 
     @Autowired
+    private ApiKeyPoolRepository apiKeyPoolRepository;
+
+    @Autowired
     private StubDeepSeekClient stubDeepSeekClient;
+
+    @Autowired
+    private TransactionTemplate transactionTemplate;
 
     @BeforeEach
     void resetStub() {
@@ -72,7 +75,11 @@ class ShareAdviceAsyncTest {
 
     @Test
     void shareWithoutApiKeyShouldBeNoneKeyAndNotCallModel() throws Exception {
-        String token = register(TestUsernames.unique("nokey"), "secret12");
+        String username = TestUsernames.unique("nokey");
+        String token = register(username, "secret12");
+        Long userId = userRepository.findByUsername(username).map(UserEntity::getId).orElseThrow();
+        // 注册可能已从密钥库默认绑定；本用例要测无 Key
+        transactionTemplate.executeWithoutResult(status -> userApiKeyRepository.deleteByUserId(userId));
         putProfile(token, "无钥", 170.0, 65.0);
         createRecord(token, "CONSUME", "快走", "2026-08-18T07:30:00+08:00");
 
@@ -137,12 +144,7 @@ class ShareAdviceAsyncTest {
     }
 
     private void bindFakeKey(Long userId, String fakeKey) {
-        UserApiKeyEntity row = new UserApiKeyEntity();
-        row.setUserId(userId);
-        row.setApiKey(fakeKey);
-        row.setKeyMask("****" + fakeKey.substring(fakeKey.length() - 4));
-        row.setUpdatedAt(Instant.now());
-        userApiKeyRepository.save(row);
+        TestApiKeys.bind(apiKeyPoolRepository, userApiKeyRepository, userId, fakeKey);
     }
 
     private void putProfile(String token, String nickname, double heightCm, double weightKg) throws Exception {

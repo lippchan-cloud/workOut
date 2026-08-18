@@ -76,6 +76,9 @@ function stubAdminApis() {
       if (url.includes("/api/v1/admin/accounts")) {
         return jsonOk({ list: [account] });
       }
+      if (url.includes("/api/v1/admin/apiKeys/pool")) {
+        return jsonOk({ list: [{ id: 1, keyMask: "****abcd", enabled: true }] });
+      }
       if (url.includes("/api/v1/admin/apiKeys")) {
         return jsonOk({ list: [] });
       }
@@ -179,6 +182,16 @@ describe("CmsPage", () => {
     expect(await screen.findByText("cms_alice")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /打开报告/ })).toHaveAttribute("href", "/report/abcToken");
     expect(screen.getByRole("link", { name: "报告" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("admin api-keys page shows 密钥库 table with mask only", async () => {
+    localStorage.setItem("workout_token", "admin-tok");
+    localStorage.setItem("workout_role", "ADMIN");
+    renderAt("/cms/api-keys");
+    expect(await screen.findByRole("heading", { name: "密钥库" })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "密钥库" })).toBeInTheDocument();
+    expect(screen.getByText("****abcd")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/sk-[a-z0-9]{8,}/i);
   });
 
   it("admin sees loading then empty state", async () => {

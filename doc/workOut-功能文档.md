@@ -60,7 +60,7 @@
 | — | CMS 账户 | `/cms/accounts` | 全站账户表；点用户名进详情 |
 | — | CMS 用户详情 | `/cms/users/:userId` | 资料 + 最近记录 + 已有分享链接 |
 | — | CMS 报告 | `/cms/reports` | 已有分享列表；打开公开 `/report/:id` |
-| — | CMS API Key | `/cms/api-keys` | 单用户/批量绑定 DeepSeek Key（掩码展示） |
+| — | CMS API Key | `/cms/api-keys` | 密钥库 + 单用户/批量绑定 DeepSeek Key（掩码展示）；注册默认分配 |
 | — | CMS AI 调用 | `/cms/ai-calls` | 调用日志；可按 userId、apiKeyId 筛选 |
 
 切换 Tab 不丢未提交表单时，需提示或自动保留输入草稿（建议：离开记录页前提示未保存内容）。  
@@ -379,7 +379,7 @@
 | 账户列表 | `/cms/accounts` | 用户ID、用户名、创建时间、昵称、身高、体重；用户名链到详情 |
 | 用户详情 | `/cms/users/:userId` | 用户名、角色、创建时间、昵称、身高、体重、记录条数与最近若干条；该用户已有分享链到 `/report/:id`。`/cms/users` 空态提示从账户列表选择 |
 | 报告 | `/cms/reports` | 列出已有分享（token、userId、用户名、from、to、createdAt），新窗口打开公开报告 |
-| API Key | `/cms/api-keys` | 单用户改 Key、批量改 Key；列表仅掩码 |
+| API Key | `/cms/api-keys` | **密钥库**列表/新增（掩码）；单用户改 Key、批量改 Key；新用户注册默认从库分配 |
 | AI 调用 | `/cms/ai-calls` | 调用情况列表；筛选 userId / apiKeyId |
 
 CMS **不得**用管理员身份代用户创建分享或改写快照。身份只信 JWT；列表与详情禁止 N+1。

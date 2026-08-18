@@ -20,4 +20,9 @@ public interface UserApiKeyRepository extends JpaRepository<UserApiKeyEntity, Lo
      * 批量按用户加载，供 CMS 列表与批量改写。
      */
     List<UserApiKeyEntity> findByUserIdIn(Collection<Long> userIds);
+
+    /**
+     * 注销时按用户删除绑定。
+     */
+    void deleteByUserId(Long userId);
 }

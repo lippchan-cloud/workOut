@@ -1,5 +1,6 @@
 package com.workout.bootstrap;
 
+import com.workout.modules.ai.application.ApiKeyAssignmentService;
 import com.workout.modules.auth.domain.UserRole;
 import com.workout.modules.auth.infrastructure.UserEntity;
 import com.workout.modules.auth.infrastructure.UserRepository;
@@ -19,6 +20,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 @Profile("!test")
+@Order(200)
 public class DemoDataSeeder implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DemoDataSeeder.class);
@@ -39,6 +42,7 @@ public class DemoDataSeeder implements ApplicationRunner {
     private final ProfileRepository profileRepository;
     private final ProfileHistoryRepository profileHistoryRepository;
     private final DailyRecordRepository dailyRecordRepository;
+    private final ApiKeyAssignmentService apiKeyAssignmentService;
     private final Clock clock;
 
     /**
@@ -50,12 +54,14 @@ public class DemoDataSeeder implements ApplicationRunner {
             ProfileRepository profileRepository,
             ProfileHistoryRepository profileHistoryRepository,
             DailyRecordRepository dailyRecordRepository,
+            ApiKeyAssignmentService apiKeyAssignmentService,
             ObjectProvider<Clock> clockProvider) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.profileRepository = profileRepository;
         this.profileHistoryRepository = profileHistoryRepository;
         this.dailyRecordRepository = dailyRecordRepository;
+        this.apiKeyAssignmentService = apiKeyAssignmentService;
         this.clock = clockProvider.getIfAvailable(() -> Clock.system(SHANGHAI));
     }
 
@@ -108,6 +114,8 @@ public class DemoDataSeeder implements ApplicationRunner {
                 .toList();
         // 一次批量写入事项
         dailyRecordRepository.saveAll(recordRows);
+        // 密钥库若已有启用 key，给 demo 默认绑定
+        apiKeyAssignmentService.assignDefaultIfAbsent(saved.getId());
         log.info(
                 "[演示种子] run done userId={}, records={}, history={}, elapsedMs={}",
                 saved.getId(),

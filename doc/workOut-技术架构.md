@@ -205,6 +205,8 @@ flowchart LR
 | CMS 用户详情 | GET | `/api/v1/admin/accounts/{userId}` | ADMIN JWT |
 | CMS 已有分享 | GET | `/api/v1/admin/reports` | ADMIN JWT |
 | CMS API Key 列表 | GET | `/api/v1/admin/apiKeys` | ADMIN JWT |
+| CMS 密钥库列表 | GET | `/api/v1/admin/apiKeys/pool` | ADMIN JWT；仅掩码 |
+| CMS 密钥库新增 | POST | `/api/v1/admin/apiKeys/pool` | ADMIN JWT；入库后新注册可默认分配 |
 | CMS 单用户改 Key | PUT | `/api/v1/admin/apiKeys/{userId}` | ADMIN JWT |
 | CMS 批量改 Key | PUT | `/api/v1/admin/apiKeys/batch` | ADMIN JWT |
 | CMS AI 调用 | GET | `/api/v1/admin/aiCalls?userId=&apiKeyId=` | ADMIN JWT |

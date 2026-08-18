@@ -80,9 +80,9 @@ public class ShareAdviceWorker {
             writeLog(row.getUserId(), null, token, "SKIPPED");
             return;
         }
-        if (!rateLimitService.allow(key.getId())) {
+        if (!rateLimitService.allow(rateKeyId(key))) {
             updateAdvice(row, AdviceStatus.FAILED, ShareAdviceService.MSG_RATE);
-            writeLog(row.getUserId(), key.getId(), token, "RATE_LIMITED");
+            writeLog(row.getUserId(), rateKeyId(key), token, "RATE_LIMITED");
             return;
         }
         try {
@@ -96,7 +96,7 @@ public class ShareAdviceWorker {
                     PhysioScientistPrompts.SYSTEM,
                     PhysioScientistPrompts.userMessage(row.getUserId(), compressed));
             updateAdvice(row, AdviceStatus.READY, advice);
-            writeLog(row.getUserId(), key.getId(), token, "SUCCESS");
+            writeLog(row.getUserId(), rateKeyId(key), token, "SUCCESS");
             log.info(
                     "[建议分析] generateInNewTx done entityType=ShareReportEntity id={}, status=READY",
                     row.getId());
@@ -106,7 +106,7 @@ public class ShareAdviceWorker {
                     tokenPrefix(token),
                     ex.getMessage());
             updateAdvice(row, AdviceStatus.FAILED, ShareAdviceService.MSG_FAIL);
-            writeLog(row.getUserId(), key.getId(), token, "FAILED");
+            writeLog(row.getUserId(), rateKeyId(key), token, "FAILED");
         }
     }
 
@@ -142,6 +142,13 @@ public class ShareAdviceWorker {
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("无法更新建议快照", ex);
         }
+    }
+
+    /**
+     * 限流与调用日志按密钥库 id；缺 poolId 时回退绑定行 id。
+     */
+    private static Long rateKeyId(UserApiKeyEntity key) {
+        return key.getPoolId() != null ? key.getPoolId() : key.getId();
     }
 
     private static String tokenPrefix(String token) {

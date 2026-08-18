@@ -3,15 +3,17 @@ package com.workout.modules.admin.application;
 import com.workout.common.BusinessException;
 import com.workout.common.ForbiddenException;
 import com.workout.common.NotFoundException;
+import com.workout.modules.admin.api.AdminApiKeyPoolResponse;
 import com.workout.modules.admin.api.AdminApiKeyResponse;
+import com.workout.modules.ai.application.ApiKeyAssignmentService;
+import com.workout.modules.ai.infrastructure.ApiKeyPoolEntity;
+import com.workout.modules.ai.infrastructure.ApiKeyPoolRepository;
 import com.workout.modules.auth.domain.UserRole;
 import com.workout.modules.auth.infrastructure.UserEntity;
 import com.workout.modules.auth.infrastructure.UserRepository;
 import com.workout.modules.ai.infrastructure.UserApiKeyEntity;
 import com.workout.modules.ai.infrastructure.UserApiKeyRepository;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -33,13 +35,21 @@ public class AdminApiKeyService {
 
     private final UserRepository userRepository;
     private final UserApiKeyRepository userApiKeyRepository;
+    private final ApiKeyPoolRepository apiKeyPoolRepository;
+    private final ApiKeyAssignmentService apiKeyAssignmentService;
 
     /**
-     * 注入用户与 key 仓储。
+     * 注入用户、绑定、密钥库与分配服务。
      */
-    public AdminApiKeyService(UserRepository userRepository, UserApiKeyRepository userApiKeyRepository) {
+    public AdminApiKeyService(
+            UserRepository userRepository,
+            UserApiKeyRepository userApiKeyRepository,
+            ApiKeyPoolRepository apiKeyPoolRepository,
+            ApiKeyAssignmentService apiKeyAssignmentService) {
         this.userRepository = userRepository;
         this.userApiKeyRepository = userApiKeyRepository;
+        this.apiKeyPoolRepository = apiKeyPoolRepository;
+        this.apiKeyAssignmentService = apiKeyAssignmentService;
     }
 
     /**
@@ -60,7 +70,7 @@ public class AdminApiKeyService {
                     return new AdminApiKeyResponse(
                             u.getId(),
                             u.getUsername(),
-                            key == null ? null : key.getId(),
+                            key == null ? null : key.getPoolId(),
                             key == null ? null : key.getKeyMask(),
                             key != null);
                 })
@@ -80,19 +90,15 @@ public class AdminApiKeyService {
             throw new BusinessException("apiKey 不能为空");
         }
         UserEntity user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("用户不存在"));
-        UserApiKeyEntity row = userApiKeyRepository.findByUserId(userId).orElseGet(UserApiKeyEntity::new);
-        row.setUserId(userId);
-        row.setApiKey(apiKey.trim());
-        row.setKeyMask(mask(apiKey.trim()));
-        row.setUpdatedAt(Instant.now());
-        row.setUpdatedBy(operatorUserId);
-        UserApiKeyEntity saved = userApiKeyRepository.save(row);
+        ApiKeyPoolEntity pool = apiKeyAssignmentService.upsertPool(apiKey.trim(), operatorUserId);
+        UserApiKeyEntity saved = apiKeyAssignmentService.bind(userId, pool, operatorUserId);
         log.info(
-                "[后台CMS] upsertApiKey done entityType=UserApiKeyEntity id={}, userId={}, keyMask={}",
+                "[后台CMS] upsertApiKey done entityType=UserApiKeyEntity id={}, userId={}, poolId={}, keyMask={}",
                 saved.getId(),
                 userId,
+                saved.getPoolId(),
                 saved.getKeyMask());
-        return new AdminApiKeyResponse(user.getId(), user.getUsername(), saved.getId(), saved.getKeyMask(), true);
+        return new AdminApiKeyResponse(user.getId(), user.getUsername(), saved.getPoolId(), saved.getKeyMask(), true);
     }
 
     /**
@@ -118,36 +124,65 @@ public class AdminApiKeyService {
             throw new NotFoundException("部分用户不存在");
         }
         Map<Long, UserEntity> userMap = users.stream().collect(Collectors.toMap(UserEntity::getId, u -> u));
+        ApiKeyPoolEntity pool = apiKeyAssignmentService.upsertPool(apiKey.trim(), operatorUserId);
         Map<Long, UserApiKeyEntity> existing = userApiKeyRepository.findByUserIdIn(idSet).stream()
                 .collect(Collectors.toMap(UserApiKeyEntity::getUserId, e -> e, (a, b) -> a));
-        String trimmed = apiKey.trim();
-        String keyMask = mask(trimmed);
-        Instant now = Instant.now();
+        java.time.Instant now = java.time.Instant.now();
         List<UserApiKeyEntity> toSave = new ArrayList<>();
         for (Long uid : idSet) {
             UserApiKeyEntity row = existing.getOrDefault(uid, new UserApiKeyEntity());
             row.setUserId(uid);
-            row.setApiKey(trimmed);
-            row.setKeyMask(keyMask);
+            row.setPoolId(pool.getId());
+            row.setApiKey(pool.getApiKey());
+            row.setKeyMask(pool.getKeyMask());
             row.setUpdatedAt(now);
             row.setUpdatedBy(operatorUserId);
             toSave.add(row);
         }
-        // 批量保存，禁止循环单条远程调用
         List<UserApiKeyEntity> saved = userApiKeyRepository.saveAll(toSave);
-        Map<Long, UserApiKeyEntity> savedByUser = new HashMap<>();
-        for (UserApiKeyEntity e : saved) {
-            savedByUser.put(e.getUserId(), e);
-        }
+        Map<Long, UserApiKeyEntity> savedByUser =
+                saved.stream().collect(Collectors.toMap(UserApiKeyEntity::getUserId, e -> e, (a, b) -> a));
         List<AdminApiKeyResponse> result = idSet.stream()
                 .map(uid -> {
                     UserEntity u = userMap.get(uid);
                     UserApiKeyEntity k = savedByUser.get(uid);
-                    return new AdminApiKeyResponse(uid, u.getUsername(), k.getId(), k.getKeyMask(), true);
+                    return new AdminApiKeyResponse(uid, u.getUsername(), k.getPoolId(), k.getKeyMask(), true);
                 })
                 .toList();
         log.info("[后台CMS] upsertApiKeyBatch done size={}", result.size());
         return result;
+    }
+
+    /**
+     * 列出密钥库（仅掩码）。
+     */
+    @Transactional(readOnly = true)
+    public List<AdminApiKeyPoolResponse> listPool(Long operatorUserId) {
+        log.info("[后台CMS] listPool start operatorUserId={}", operatorUserId);
+        requireAdmin(operatorUserId);
+        List<AdminApiKeyPoolResponse> list = apiKeyPoolRepository.findAll().stream()
+                .map(p -> new AdminApiKeyPoolResponse(p.getId(), p.getKeyMask(), p.isEnabled()))
+                .toList();
+        log.info("[后台CMS] listPool done size={}", list.size());
+        return list;
+    }
+
+    /**
+     * 向密钥库新增一把 Key。
+     */
+    @Transactional
+    public AdminApiKeyPoolResponse createPool(Long operatorUserId, String apiKey) {
+        log.info("[后台CMS] createPool start operatorUserId={}, keyMask={}", operatorUserId, mask(apiKey));
+        requireAdmin(operatorUserId);
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new BusinessException("apiKey 不能为空");
+        }
+        ApiKeyPoolEntity saved = apiKeyAssignmentService.upsertPool(apiKey.trim(), operatorUserId);
+        log.info(
+                "[后台CMS] createPool done entityType=ApiKeyPoolEntity id={}, keyMask={}",
+                saved.getId(),
+                saved.getKeyMask());
+        return new AdminApiKeyPoolResponse(saved.getId(), saved.getKeyMask(), saved.isEnabled());
     }
 
     /**

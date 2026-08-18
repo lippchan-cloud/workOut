@@ -17,9 +17,10 @@
 
 ## 鉴权与密钥
 
-- 表 `work_out_user_api_key`：一用户一行。
+- 表 `work_out_api_key`：**密钥库**（独立管理明文 Key）；CMS `GET/POST /api/v1/admin/apiKeys/pool` 可看/新增（响应仅掩码）。
+- 表 `work_out_user_api_key`：一用户一行绑定，含 `pool_id`；**新注册**时从密钥库取绑定最少的一把默认关联（库空则跳过）。
 - 配置项 `workout.ai.deepseek.api-key` ← 环境变量 `WORKOUT_DEEPSEEK_API_KEY`（私有仓可有默认值）。
-- 启动种子 `DeepSeekApiKeySeeder`：把配置 key 赋给 `workout.ai.deepseek.seed-usernames`（默认 `demo,lipp`）。
+- 启动种子 `DeepSeekApiKeySeeder`：把配置 key 写入密钥库，并赋给 `workout.ai.deepseek.seed-usernames`（默认 `demo,lipp`）。
 - CMS：`PUT /api/v1/admin/apiKeys/{userId}`、`PUT /api/v1/admin/apiKeys/batch`；响应与列表仅 **keyMask**。
 - **日志禁止打印完整 key**，只打掩码（如 `****fd29`）。
 

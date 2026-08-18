@@ -23,6 +23,9 @@ public class UserApiKeyEntity {
     @Column(name = "user_id", nullable = false, unique = true)
     private Long userId;
 
+    @Column(name = "pool_id")
+    private Long poolId;
+
     @Column(name = "api_key", nullable = false, length = 256)
     private String apiKey;
 
@@ -61,6 +64,20 @@ public class UserApiKeyEntity {
      */
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    /**
+     * 密钥库主键，限流按此计数。
+     */
+    public Long getPoolId() {
+        return poolId;
+    }
+
+    /**
+     * 设置密钥库主键。
+     */
+    public void setPoolId(Long poolId) {
+        this.poolId = poolId;
     }
 
     /**

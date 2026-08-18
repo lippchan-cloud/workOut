@@ -13,10 +13,12 @@ import com.workout.modules.ai.application.StubDeepSeekClient;
 import com.workout.modules.ai.domain.AiCallPurpose;
 import com.workout.modules.ai.infrastructure.AiCallLogEntity;
 import com.workout.modules.ai.infrastructure.AiCallLogRepository;
+import com.workout.modules.ai.infrastructure.ApiKeyPoolRepository;
 import com.workout.modules.ai.infrastructure.UserApiKeyEntity;
 import com.workout.modules.ai.infrastructure.UserApiKeyRepository;
 import com.workout.modules.auth.infrastructure.UserEntity;
 import com.workout.modules.auth.infrastructure.UserRepository;
+import com.workout.support.TestApiKeys;
 import com.workout.support.TestUsernames;
 import java.time.Instant;
 import java.util.HashMap;
@@ -52,6 +54,9 @@ class AiAdviceRateLimitTest {
     private UserApiKeyRepository userApiKeyRepository;
 
     @Autowired
+    private ApiKeyPoolRepository apiKeyPoolRepository;
+
+    @Autowired
     private AiCallLogRepository aiCallLogRepository;
 
     @Autowired
@@ -68,11 +73,12 @@ class AiAdviceRateLimitTest {
         String token = register(username, "secret12");
         Long userId = userRepository.findByUsername(username).map(UserEntity::getId).orElseThrow();
         UserApiKeyEntity key = bindFakeKey(userId, "sk-test-fake-key-rate");
-        // 先插入本小时 10 条日志，权威在 MySQL
+        Long limitId = key.getPoolId() != null ? key.getPoolId() : key.getId();
+        // 先插入本小时 10 条日志，权威在 MySQL（按密钥库 id）
         for (int i = 0; i < AiRateLimitService.HOUR_LIMIT; i++) {
             AiCallLogEntity logRow = new AiCallLogEntity();
             logRow.setUserId(userId);
-            logRow.setApiKeyId(key.getId());
+            logRow.setApiKeyId(limitId);
             logRow.setPurpose(AiCallPurpose.SHARE_ADVICE.name());
             logRow.setStatus("SUCCESS");
             logRow.setCreatedAt(Instant.now());
@@ -94,12 +100,7 @@ class AiAdviceRateLimitTest {
     }
 
     private UserApiKeyEntity bindFakeKey(Long userId, String fakeKey) {
-        UserApiKeyEntity row = new UserApiKeyEntity();
-        row.setUserId(userId);
-        row.setApiKey(fakeKey);
-        row.setKeyMask("****" + fakeKey.substring(fakeKey.length() - 4));
-        row.setUpdatedAt(Instant.now());
-        return userApiKeyRepository.save(row);
+        return TestApiKeys.bind(apiKeyPoolRepository, userApiKeyRepository, userId, fakeKey);
     }
 
     private void putProfile(String token, String nickname, double heightCm, double weightKg) throws Exception {

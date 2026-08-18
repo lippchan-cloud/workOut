@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { apiGet, apiPut } from "../api/client";
+import { apiGet, apiPost, apiPut } from "../api/client";
 
 type ApiKeyRow = {
   userId: number;
@@ -9,23 +9,37 @@ type ApiKeyRow = {
   hasKey: boolean;
 };
 
+type PoolRow = {
+  id: number;
+  keyMask: string;
+  enabled: boolean;
+};
+
 /**
- * CMS：单用户 / 批量改 DeepSeek API Key；只展示掩码。
+ * CMS：密钥库列表/新增 + 单用户/批量改 DeepSeek API Key；只展示掩码。
  */
 export function CmsApiKeysPage() {
   const [rows, setRows] = useState<ApiKeyRow[]>([]);
+  const [poolRows, setPoolRows] = useState<PoolRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [userId, setUserId] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [batchIds, setBatchIds] = useState("");
   const [batchKey, setBatchKey] = useState("");
+  const [poolKey, setPoolKey] = useState("");
   const [message, setMessage] = useState("");
 
   const reload = () => {
     setLoading(true);
-    apiGet<{ list: ApiKeyRow[] }>("/api/v1/admin/apiKeys")
-      .then((data) => setRows(data.list ?? []))
+    Promise.all([
+      apiGet<{ list: ApiKeyRow[] }>("/api/v1/admin/apiKeys"),
+      apiGet<{ list: PoolRow[] }>("/api/v1/admin/apiKeys/pool"),
+    ])
+      .then(([userData, poolData]) => {
+        setRows(userData.list ?? []);
+        setPoolRows(poolData.list ?? []);
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "加载失败"))
       .finally(() => setLoading(false));
   };
@@ -33,6 +47,20 @@ export function CmsApiKeysPage() {
   useEffect(() => {
     reload();
   }, []);
+
+  const onPoolCreate = async (event: FormEvent) => {
+    event.preventDefault();
+    setMessage("");
+    setError("");
+    try {
+      await apiPost("/api/v1/admin/apiKeys/pool", { apiKey: poolKey });
+      setMessage("已加入密钥库（仅掩码展示）");
+      setPoolKey("");
+      reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "密钥库新增失败");
+    }
+  };
 
   const onSingle = async (event: FormEvent) => {
     event.preventDefault();
@@ -70,10 +98,48 @@ export function CmsApiKeysPage() {
   return (
     <section className="stack">
       <h2>API Key</h2>
-      <p className="page__subtitle">为用户绑定 DeepSeek Key；列表仅显示掩码。</p>
+      <p className="page__subtitle">密钥库存独立表；新注册用户默认分配；列表仅显示掩码。</p>
       {loading ? <p className="empty-state">加载中…</p> : null}
       {error ? <p role="alert">{error}</p> : null}
       {message ? <p>{message}</p> : null}
+
+      <form className="card stack" onSubmit={onPoolCreate}>
+        <h3>密钥库</h3>
+        <label>
+          新增 API Key
+          <input
+            type="password"
+            value={poolKey}
+            onChange={(e) => setPoolKey(e.target.value)}
+            required
+            autoComplete="off"
+          />
+        </label>
+        <button type="submit" className="btn btn-secondary">
+          加入密钥库
+        </button>
+      </form>
+      <div className="cms-table-wrap">
+        <table className="cms-table" aria-label="密钥库">
+          <thead>
+            <tr>
+              <th>poolId</th>
+              <th>掩码</th>
+              <th>启用</th>
+            </tr>
+          </thead>
+          <tbody>
+            {poolRows.map((row) => (
+              <tr key={row.id}>
+                <td>{row.id}</td>
+                <td>{row.keyMask}</td>
+                <td>{row.enabled ? "是" : "否"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <form className="card stack" onSubmit={onSingle}>
         <h3>单用户改 Key</h3>
         <label>

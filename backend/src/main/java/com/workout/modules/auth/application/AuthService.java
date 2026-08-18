@@ -11,6 +11,8 @@ import com.workout.modules.profile.infrastructure.ProfileHistoryRepository;
 import com.workout.modules.profile.infrastructure.ProfileRepository;
 import com.workout.modules.record.infrastructure.DailyRecordRepository;
 import com.workout.modules.share.infrastructure.ShareReportRepository;
+import com.workout.modules.ai.application.ApiKeyAssignmentService;
+import com.workout.modules.ai.infrastructure.UserApiKeyRepository;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,8 @@ public class AuthService {
     private final ProfileRepository profileRepository;
     private final ProfileHistoryRepository profileHistoryRepository;
     private final ShareReportRepository shareReportRepository;
+    private final ApiKeyAssignmentService apiKeyAssignmentService;
+    private final UserApiKeyRepository userApiKeyRepository;
 
     /**
      * 注入注册、改密与注销所需依赖。
@@ -47,7 +51,9 @@ public class AuthService {
             DailyRecordRepository dailyRecordRepository,
             ProfileRepository profileRepository,
             ProfileHistoryRepository profileHistoryRepository,
-            ShareReportRepository shareReportRepository) {
+            ShareReportRepository shareReportRepository,
+            ApiKeyAssignmentService apiKeyAssignmentService,
+            UserApiKeyRepository userApiKeyRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -56,6 +62,8 @@ public class AuthService {
         this.profileRepository = profileRepository;
         this.profileHistoryRepository = profileHistoryRepository;
         this.shareReportRepository = shareReportRepository;
+        this.apiKeyAssignmentService = apiKeyAssignmentService;
+        this.userApiKeyRepository = userApiKeyRepository;
     }
 
     /**
@@ -91,6 +99,9 @@ public class AuthService {
                 saved.getId(),
                 saved.getUsername(),
                 saved.getRole());
+
+        // 新用户默认从密钥库取一把关联
+        apiKeyAssignmentService.assignDefaultIfAbsent(saved.getId());
 
         // 注册成功即发 JWT，避免再调一次登录
         String token = jwtService.issueToken(saved.getId(), saved.getUsername());
@@ -182,6 +193,8 @@ public class AuthService {
         log.info("[鉴权注销] deleted profile history userId={}", userId);
         shareReportRepository.deleteByUserId(userId);
         log.info("[鉴权注销] deleted share reports userId={}", userId);
+        userApiKeyRepository.deleteByUserId(userId);
+        log.info("[鉴权注销] deleted api key binding userId={}", userId);
         profileRepository.deleteByUserId(userId);
         userRepository.delete(user);
         log.info("[鉴权注销] deleteMe done userId={}, elapsedMs={}", userId, System.currentTimeMillis() - startMs);

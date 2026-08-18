@@ -1555,3 +1555,16 @@ OpenSpec：`openspec/changes/phase-3-ui-hierarchy/`。未 commit。
 - Key 初始化：`application.yml` / `application-docker.yml` 的 `WORKOUT_DEEPSEEK_API_KEY`；`DeepSeekApiKeySeeder` 赋给 seed 用户名（demo、lipp）；日志仅掩码；测试用不真 key
 - 未 commit
 
+## 密钥库 work_out_api_key（独立表 + 注册默认分配）
+
+### Task — ApiKeyPoolAssign / CMS pool / Flyway
+
+- 对应规格：密钥库存独立表；CMS 可看/管；新注册默认分配；响应仅掩码
+- 测试类/文件：`ApiKeyPoolAssignTest`、`AdminApiKeyAndAiCallTest`、`AiAdviceRateLimitTest`、`ShareAdviceAsyncTest`、`FlywayMigrationTest`、`AuthRegisterTest`；`frontend/src/CmsPage.test.tsx`
+- RED（曾）：`POST /api/v1/admin/apiKeys/pool` → 500 Method not supported（路由未挂）；`enabled` TINYINT vs Hibernate bit 校验失败；共享库多 key 时断言绑到特定掩码不稳定
+- GREEN 命令：`cd backend && mvn -q test -Dtest=ApiKeyPoolAssignTest,AdminApiKeyAndAiCallTest,AiAdviceRateLimitTest,ShareAdviceAsyncTest,FlywayMigrationTest,AuthRegisterTest`
+- GREEN 结果：PASS — Tests run: 12, Failures: 0
+- 前端 GREEN：`cd frontend && npm test -- src/CmsPage.test.tsx` — PASS — 13 tests
+- 实现要点：`work_out_api_key` + `pool_id`；`AdminApiKeyController` GET/POST `/pool`；`ApiKeyAssignmentService.assignDefaultIfAbsent`（SELECT id 再 findById）；`CmsApiKeysPage` 密钥库；`TestApiKeys.bind`；文档同步；未写真实 sk-
+- 未 commit
+
