@@ -34,6 +34,8 @@ export function CalendarPage() {
   const [list, setList] = useState<RecordItem[]>([]);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [reloadKey, setReloadKey] = useState(0);
+  const [actionMessage, setActionMessage] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
   const week = weekContaining(anchor);
   const weekStart = formatYmd(week[0]);
   const weekEnd = formatYmd(week[6]);
@@ -109,20 +111,33 @@ export function CalendarPage() {
 
   const csvFilename = () => {
     if (mode === "month") {
-      return `workout-${yearMonth}.csv`;
+      return `workout-${yearMonth}.xlsx`;
     }
     if (mode === "range") {
-      return from === to ? `workout-${from}.csv` : `workout-${from}_${to}.csv`;
+      return from === to ? `workout-${from}.xlsx` : `workout-${from}_${to}.xlsx`;
     }
-    return `workout-${selected}.csv`;
+    return `workout-${selected}.xlsx`;
   };
 
   const emptyMessage =
     mode === "month" ? "这个月还没有记录" : mode === "range" ? "这段时间还没有记录" : "这一天还没有记录";
 
+  const requireBodyOrRedirect = async (): Promise<boolean> => {
+    const profile = await apiGet<{ heightCm: number | null; weightKg: number | null }>("/api/v1/profile");
+    if (profile.heightCm == null || profile.weightKg == null) {
+      setActionMessage("请先填写身高和体重");
+      navigate("/profile/body");
+      return false;
+    }
+    return true;
+  };
+
   const onExport = async () => {
     if (!isAuthenticated) {
       navigate("/login?redirect=/calendar");
+      return;
+    }
+    if (!(await requireBodyOrRedirect())) {
       return;
     }
     const token = localStorage.getItem("workout_token");
@@ -135,6 +150,11 @@ export function CalendarPage() {
       navigate("/login?redirect=/calendar");
       return;
     }
+    if (response.status === 400) {
+      setActionMessage("请先填写身高和体重");
+      navigate("/profile/body");
+      return;
+    }
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -142,6 +162,37 @@ export function CalendarPage() {
     link.download = csvFilename();
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const onShare = async () => {
+    if (!isAuthenticated) {
+      navigate("/login?redirect=/calendar");
+      return;
+    }
+    if (!(await requireBodyOrRedirect())) {
+      return;
+    }
+    const token = localStorage.getItem("workout_token");
+    const exportQuery = mode === "day" ? `date=${selected}` : periodQuery();
+    const response = await fetch(`/api/v1/shareReports?${exportQuery}`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (response.status === 401) {
+      localStorage.removeItem("workout_token");
+      navigate("/login?redirect=/calendar");
+      return;
+    }
+    const body = await response.json();
+    if (!response.ok || body.code !== 200) {
+      setActionMessage(body.msg || "分享失败");
+      if (body.msg === "请先填写身高和体重") {
+        navigate("/profile/body");
+      }
+      return;
+    }
+    setShareUrl(body.data.url);
+    setActionMessage("");
   };
 
   const openDetail = (item: RecordItem) => {
@@ -268,13 +319,19 @@ export function CalendarPage() {
         ) : null}
 
         <div className="row">
-          <button type="button" className="btn btn-text" onClick={() => navigate("/calendar/trends")}>
-            变化曲线
+          <button type="button" className="btn btn-ghost" onClick={onShare}>
+            分享
           </button>
           <button type="button" className="btn btn-primary btn-block" onClick={onExport}>
-            导出 CSV
+            导出
           </button>
         </div>
+        {actionMessage ? <p className="flash">{actionMessage}</p> : null}
+        {shareUrl ? (
+          <p className="flash">
+            分享链接：{shareUrl}
+          </p>
+        ) : null}
       </div>
     </div>
   );

@@ -29,3 +29,4 @@ workout:
     expire-days: 7
   admin:
     usernames: ""
+  public-base-url: http://localhost:8080

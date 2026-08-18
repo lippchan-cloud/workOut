@@ -26,3 +26,4 @@ workout:
     expire-days: 7
   admin:
     usernames: ${WORKOUT_ADMIN_USERNAMES:lipp}
+  public-base-url: ${WORKOUT_PUBLIC_BASE_URL:http://localhost:8080}

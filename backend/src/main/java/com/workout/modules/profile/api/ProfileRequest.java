@@ -1,6 +1,7 @@
 package com.workout.modules.profile.api;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 /**
  * 保存资料请求（API 边界 DTO）。
@@ -10,6 +11,7 @@ public class ProfileRequest {
     private String nickname;
     private BigDecimal heightCm;
     private BigDecimal weightKg;
+    private Instant changedAt;
 
     /**
      * 读取昵称。
@@ -51,5 +53,19 @@ public class ProfileRequest {
      */
     public void setWeightKg(BigDecimal weightKg) {
         this.weightKg = weightKg;
+    }
+
+    /**
+     * 资料真实发生时间；空则服务端用此刻。
+     */
+    public Instant getChangedAt() {
+        return changedAt;
+    }
+
+    /**
+     * 写入资料真实发生时间。
+     */
+    public void setChangedAt(Instant changedAt) {
+        this.changedAt = changedAt;
     }
 }

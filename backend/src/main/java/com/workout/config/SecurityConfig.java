@@ -20,7 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * CMS 账户列表不再公开放行，须 authenticated + 业务层 ADMIN 校验。
  */
 @Configuration
-@EnableConfigurationProperties({JwtProperties.class, AdminProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, AdminProperties.class, WorkoutPublicProperties.class})
 public class SecurityConfig {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
@@ -49,6 +49,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/health")
                         .permitAll()
+                        .requestMatchers("/api/v1/reports/**")
+                        .permitAll()
                         .requestMatchers("/api/v1/**")
                         .authenticated()
                         .anyRequest()
@@ -56,7 +58,7 @@ public class SecurityConfig {
                 .exceptionHandling(handling -> handling.authenticationEntryPoint(jsonAuthEntryPoint))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         SecurityFilterChain chain = http.build();
-        log.info("[安全配置] securityFilterChain done public=/api/v1/auth/register,/api/v1/auth/login,/api/v1/health");
+        log.info("[安全配置] securityFilterChain done public=/api/v1/auth/register,/api/v1/auth/login,/api/v1/health,/api/v1/reports/**");
         return chain;
     }
 }

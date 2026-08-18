@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { apiDelete, apiGet, apiPut } from "../api/client";
+import { GrowthCurvePanel } from "./GrowthCurvePanel";
 
 type Profile = {
   nickname: string | null;
@@ -57,7 +58,7 @@ export function ProfilePage() {
 }
 
 /**
- * 「我的」三级：昵称 / 身高 / 体重。
+ * 「我的」三级：昵称 / 身高 / 体重 / 资料真实日期；下方成长曲线。
  */
 export function ProfileBodyPage() {
   const { isAuthenticated } = useAuth();
@@ -65,6 +66,7 @@ export function ProfileBodyPage() {
   const [nickname, setNickname] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
+  const [changedAt, setChangedAt] = useState(nowDatetimeLocal);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -85,6 +87,7 @@ export function ProfileBodyPage() {
       nickname: nickname || null,
       heightCm: heightCm === "" ? null : Number(heightCm),
       weightKg: weightKg === "" ? null : Number(weightKg),
+      changedAt: new Date(changedAt).toISOString(),
     });
     setMessage("保存成功");
   };
@@ -94,7 +97,7 @@ export function ProfileBodyPage() {
       <BackToProfile />
       <p className="page__eyebrow">Body</p>
       <h1 className="page__title">身体资料</h1>
-      <p className="page__subtitle">只记身高体重，不算 BMI。</p>
+      <p className="page__subtitle">记下当时的身高体重，不算 BMI。</p>
       <form className="card" onSubmit={onSubmit}>
         <label>
           昵称
@@ -108,13 +111,29 @@ export function ProfileBodyPage() {
           体重 (kg)
           <input value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder="例如 70" />
         </label>
+        <label>
+          资料真实日期
+          <input
+            type="datetime-local"
+            aria-label="资料真实日期"
+            value={changedAt}
+            onChange={(e) => setChangedAt(e.target.value)}
+          />
+        </label>
         <button type="submit" className="btn btn-primary btn-block">
           保存资料
         </button>
         {message ? <p className="flash">{message}</p> : null}
       </form>
+      <GrowthCurvePanel />
     </div>
   );
+}
+
+function nowDatetimeLocal(): string {
+  const date = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 /**

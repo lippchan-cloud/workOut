@@ -90,6 +90,33 @@ class ProfileHistoryTrendsTest {
     }
 
     @Test
+    void putWithClientChangedAtShouldStoreThatInstantOnHistory() throws Exception {
+        String token = register(TestUsernames.unique("hist_at"), "secret12");
+        Map<String, Object> inner = new HashMap<>();
+        inner.put("nickname", "回溯");
+        inner.put("heightCm", 175.0);
+        inner.put("weightKg", 70.0);
+        inner.put("changedAt", "2026-08-01T08:00:00+08:00");
+        mockMvc.perform(put("/api/v1/profile")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("request", inner))))
+                .andExpect(status().isOk());
+
+        MvcResult result = mockMvc.perform(get("/api/v1/profile/trends").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bodyHistory.length()").value(1))
+                .andReturn();
+        JsonNode item = objectMapper.readTree(result.getResponse().getContentAsString())
+                .path("data")
+                .path("bodyHistory")
+                .get(0);
+        java.time.Instant stored = java.time.OffsetDateTime.parse(item.path("changedAt").asText()).toInstant();
+        org.assertj.core.api.Assertions.assertThat(stored)
+                .isEqualTo(java.time.Instant.parse("2026-08-01T00:00:00Z"));
+    }
+
+    @Test
     void trendsWithoutTokenShouldReturn401() throws Exception {
         mockMvc.perform(get("/api/v1/profile/trends")).andExpect(status().isUnauthorized());
     }

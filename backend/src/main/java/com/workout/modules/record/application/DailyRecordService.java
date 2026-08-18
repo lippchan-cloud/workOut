@@ -2,22 +2,20 @@ package com.workout.modules.record.application;
 
 import com.workout.common.BusinessException;
 import com.workout.common.NotFoundException;
-import com.workout.modules.profile.domain.ProfileHistoryResolver;
+import com.workout.modules.profile.infrastructure.ProfileEntity;
 import com.workout.modules.profile.infrastructure.ProfileHistoryEntity;
 import com.workout.modules.profile.infrastructure.ProfileHistoryRepository;
+import com.workout.modules.profile.infrastructure.ProfileRepository;
 import com.workout.modules.record.api.CreateDailyRecordRequest;
 import com.workout.modules.record.api.DailyRecordResponse;
 import com.workout.modules.record.domain.RecordQueryPeriod;
 import com.workout.modules.record.domain.RecordType;
 import com.workout.modules.record.infrastructure.DailyRecordEntity;
 import com.workout.modules.record.infrastructure.DailyRecordRepository;
-import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,14 +38,18 @@ public class DailyRecordService {
 
     private final DailyRecordRepository dailyRecordRepository;
     private final ProfileHistoryRepository profileHistoryRepository;
+    private final ProfileRepository profileRepository;
 
     /**
-     * 注入日记录与身体历史仓储。
+     * 注入日记录、身体历史与当前资料仓储。
      */
     public DailyRecordService(
-            DailyRecordRepository dailyRecordRepository, ProfileHistoryRepository profileHistoryRepository) {
+            DailyRecordRepository dailyRecordRepository,
+            ProfileHistoryRepository profileHistoryRepository,
+            ProfileRepository profileRepository) {
         this.dailyRecordRepository = dailyRecordRepository;
         this.profileHistoryRepository = profileHistoryRepository;
+        this.profileRepository = profileRepository;
     }
 
     /**
@@ -314,11 +316,11 @@ public class DailyRecordService {
     }
 
     /**
-     * 按已解析区间导出 CSV，含 UTF-8 BOM；仅当前用户数据。
+     * 按已解析区间导出 xlsx（双工作表）；仅当前用户数据。
      *
      * @param userId JWT 用户主键
      * @param period 已解析筛选区间
-     * @return CSV 字节
+     * @return xlsx 字节
      */
     @Transactional(readOnly = true)
     public byte[] exportCsv(Long userId, RecordQueryPeriod period) {
@@ -330,6 +332,7 @@ public class DailyRecordService {
                 period.getYearMonth(),
                 period.getFrom(),
                 period.getTo());
+        requireCompleteBody(userId);
         // 复用区间列表查询，保证导出与列表同一批数据
         List<DailyRecordResponse> list = listByPeriod(userId, period);
         // 一次加载该用户历史，内存按 recordedAt 匹配，禁止按行查库
@@ -338,29 +341,7 @@ public class DailyRecordService {
         log.info(
                 "[日记录] exportCsv loaded history entityType=ProfileHistoryEntity size={}",
                 history.size());
-        StringBuilder body = new StringBuilder();
-        body.append("记录时间,类型,内容,昵称,身高cm,体重kg\n");
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(SHANGHAI);
-        for (DailyRecordResponse row : list) {
-            ProfileHistoryEntity snapshot = ProfileHistoryResolver.resolve(history, row.getRecordedAt());
-            body.append(formatter.format(row.getRecordedAt()))
-                    .append(',')
-                    .append(row.getType() == RecordType.CONSUME ? "消耗" : "摄入")
-                    .append(',')
-                    .append(escapeCsv(row.getContent()))
-                    .append(',')
-                    .append(snapshot == null || snapshot.getNickname() == null ? "" : escapeCsv(snapshot.getNickname()))
-                    .append(',')
-                    .append(formatDecimal(snapshot == null ? null : snapshot.getHeightCm()))
-                    .append(',')
-                    .append(formatDecimal(snapshot == null ? null : snapshot.getWeightKg()))
-                    .append('\n');
-        }
-        byte[] bom = new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
-        byte[] content = body.toString().getBytes(StandardCharsets.UTF_8);
-        byte[] out = new byte[bom.length + content.length];
-        System.arraycopy(bom, 0, out, 0, bom.length);
-        System.arraycopy(content, 0, out, bom.length, content.length);
+        byte[] out = XlsxExportWriter.write(list, history);
         log.info(
                 "[日记录] exportCsv done userId={}, from={}, to={}, rows={}, bytes={}, elapsedMs={}",
                 userId,
@@ -373,11 +354,11 @@ public class DailyRecordService {
     }
 
     /**
-     * 导出选中日 CSV，含 UTF-8 BOM；仅当前用户数据。
+     * 导出选中日 xlsx；仅当前用户数据。
      *
      * @param userId JWT 用户主键
      * @param date   选中日
-     * @return CSV 字节
+     * @return xlsx 字节
      */
     @Transactional(readOnly = true)
     public byte[] exportCsv(Long userId, LocalDate date) {
@@ -386,22 +367,18 @@ public class DailyRecordService {
     }
 
     /**
-     * 转义 CSV 字段中的逗号与引号。
+     * 导出/分享闸门：当前资料必须同时有身高和体重。
      */
-    private String escapeCsv(String value) {
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
+    public void requireCompleteBody(Long userId) {
+        log.info("[日记录] requireCompleteBody start userId={}", userId);
+        ProfileEntity profile = profileRepository.findByUserId(userId).orElse(null);
+        if (profile == null || profile.getHeightCm() == null || profile.getWeightKg() == null) {
+            log.error("[日记录] requireCompleteBody failed code=400 msg=请先填写身高和体重 userId={}", userId);
+            throw new BusinessException("请先填写身高和体重");
         }
-        return value;
-    }
-
-    /**
-     * 身高体重导出为纯数字文本；空则空串。
-     */
-    private String formatDecimal(BigDecimal value) {
-        if (value == null) {
-            return "";
-        }
-        return value.stripTrailingZeros().toPlainString();
+        log.info(
+                "[日记录] requireCompleteBody done entityType=ProfileEntity id={}, userId={}",
+                profile.getId(),
+                profile.getUserId());
     }
 }

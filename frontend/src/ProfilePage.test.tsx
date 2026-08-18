@@ -12,7 +12,14 @@ function LocationProbe() {
 function stubProfileFetch() {
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+    vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      if (String(url).includes("/profile/trends")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ code: 200, data: { bodyHistory: [], recordCounts: [] } }),
+        };
+      }
       if (!init || init.method === undefined || init.method === "GET") {
         return {
           ok: true,
@@ -118,5 +125,86 @@ describe("ProfilePage", () => {
     renderProfile("/profile/account");
     await waitFor(() => expect(screen.getByRole("button", { name: "修改密码" })).toBeInTheDocument());
     expect(screen.queryByRole("link", { name: "后台管理" })).not.toBeInTheDocument();
+  });
+
+  it("shows datetime defaulting to today and curve below the body form", async () => {
+    stubProfileFetch();
+    renderProfile("/profile/body");
+    const datetime = await screen.findByLabelText("资料真实日期");
+    expect((datetime as HTMLInputElement).value.startsWith(new Date().toISOString().slice(0, 10))).toBe(true);
+    expect(screen.getByRole("button", { name: "保存资料" })).toBeInTheDocument();
+    expect(await screen.findByText("还没有身体变化数据")).toBeInTheDocument();
+  });
+
+  it("saves changedAt with the body form", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      if (String(url).includes("/profile/trends")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ code: 200, data: { bodyHistory: [], recordCounts: [] } }),
+        };
+      }
+      if (!init || init.method === undefined || init.method === "GET") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ code: 200, data: { nickname: "小明", heightCm: 175, weightKg: 70 } }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ code: 200, data: {} }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderProfile("/profile/body");
+    await screen.findByDisplayValue("小明");
+    await user.click(screen.getByRole("button", { name: "保存资料" }));
+    expect(await screen.findByText("保存成功")).toBeInTheDocument();
+    const putCall = fetchMock.mock.calls.find((call) => call[1]?.method === "PUT");
+    expect(putCall).toBeTruthy();
+    const payload = JSON.parse(String(putCall?.[1]?.body));
+    expect(payload.request.changedAt).toBeTruthy();
+  });
+
+  it("shows cm unit time axis and zoom changes precision", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+        if (String(url).includes("/profile/trends")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              code: 200,
+              data: {
+                bodyHistory: [
+                  { changedAt: "2026-08-01T08:00:00+08:00", nickname: "小明", heightCm: 175, weightKg: 70 },
+                  { changedAt: "2026-08-10T08:00:00+08:00", nickname: "小明", heightCm: 176, weightKg: 69 },
+                ],
+                recordCounts: [],
+              },
+            }),
+          };
+        }
+        if (!init || init.method === undefined || init.method === "GET") {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ code: 200, data: { nickname: "小明", heightCm: 175, weightKg: 70 } }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => ({ code: 200, data: {} }) };
+      }),
+    );
+    const user = userEvent.setup();
+    renderProfile("/profile/body");
+    await user.click(await screen.findByRole("button", { name: "身高" }));
+    const chart = await screen.findByRole("img", { name: /成长曲线/ });
+    expect(chart).toHaveAttribute("data-unit", "cm");
+    expect(chart).toHaveAttribute("data-precision", "day");
+    expect(screen.getByTestId("time-axis")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "放大" }));
+    expect(chart).toHaveAttribute("data-precision", "hour");
+    expect(chart).not.toHaveStyle({ transform: expect.stringContaining("scale") } as never);
   });
 });

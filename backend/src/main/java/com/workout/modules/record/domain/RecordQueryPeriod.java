@@ -64,16 +64,16 @@ public final class RecordQueryPeriod {
     }
 
     /**
-     * CSV 下载文件名：整月 `workout-YYYY-MM.csv`；同日 `workout-YYYY-MM-DD.csv`；跨日用下划线连接。
+     * xlsx 下载文件名：整月 `workout-YYYY-MM.xlsx`；同日 `workout-YYYY-MM-DD.xlsx`；跨日用下划线连接。
      */
-    public String csvFilename() {
+    public String xlsxFilename() {
         if (yearMonth != null) {
-            return "workout-" + yearMonth + ".csv";
+            return "workout-" + yearMonth + ".xlsx";
         }
         if (from.equals(to)) {
-            return "workout-" + from + ".csv";
+            return "workout-" + from + ".xlsx";
         }
-        return "workout-" + from + "_" + to + ".csv";
+        return "workout-" + from + "_" + to + ".xlsx";
     }
 
     /**

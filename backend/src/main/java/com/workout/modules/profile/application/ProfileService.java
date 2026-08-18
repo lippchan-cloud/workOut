@@ -12,6 +12,7 @@ import com.workout.modules.profile.infrastructure.ProfileHistoryRepository;
 import com.workout.modules.profile.infrastructure.ProfileRepository;
 import com.workout.modules.record.infrastructure.DailyRecordRepository;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
@@ -71,12 +72,14 @@ public class ProfileService {
     public ProfileResponse upsert(Long userId, ProfileRequest request) {
         long startMs = System.currentTimeMillis();
         log.info(
-                "[资料] upsert start userId={}, nicknameLen={}, heightCm={}, weightKg={}",
+                "[资料] upsert start userId={}, nicknameLen={}, heightCm={}, weightKg={}, changedAt={}",
                 userId,
                 request.getNickname() == null ? 0 : request.getNickname().length(),
                 request.getHeightCm(),
-                request.getWeightKg());
+                request.getWeightKg(),
+                request.getChangedAt());
         validate(request);
+        Instant changedAt = resolveChangedAt(request.getChangedAt());
         String nickname = trimToNull(request.getNickname());
         // 按 userId 加载已有行，避免为同一用户插入多条
         ProfileEntity entity = profileRepository.findByUserId(userId).orElseGet(ProfileEntity::new);
@@ -92,10 +95,11 @@ public class ProfileService {
         entity.setNickname(nickname);
         entity.setHeightCm(request.getHeightCm());
         entity.setWeightKg(request.getWeightKg());
-        entity.setUpdatedAt(Instant.now());
+        // 当前资料更新时间与历史快照使用同一真实日期
+        entity.setUpdatedAt(changedAt);
         ProfileEntity saved = profileRepository.save(entity);
         // 字段相对最新快照有变化才追加，避免重复行
-        appendHistoryIfChanged(saved);
+        appendHistoryIfChanged(saved, changedAt);
         log.info(
                 "[资料] upsert done entityType=ProfileEntity id={}, userId={}, elapsedMs={}",
                 saved.getId(),
@@ -136,9 +140,9 @@ public class ProfileService {
     }
 
     /**
-     * 相对最新快照有差异则插入一行变更后快照。
+     * 相对最新快照有差异则插入一行变更后快照；changedAt 用资料真实日期。
      */
-    private void appendHistoryIfChanged(ProfileEntity saved) {
+    private void appendHistoryIfChanged(ProfileEntity saved, Instant changedAt) {
         ProfileHistoryEntity latest = profileHistoryRepository
                 .findTopByUserIdOrderByChangedAtDescIdDesc(saved.getUserId())
                 .orElse(null);
@@ -154,7 +158,7 @@ public class ProfileService {
         }
         ProfileHistoryEntity row = new ProfileHistoryEntity();
         row.setUserId(saved.getUserId());
-        row.setChangedAt(Instant.now());
+        row.setChangedAt(changedAt);
         row.setNickname(saved.getNickname());
         row.setHeightCm(saved.getHeightCm());
         row.setWeightKg(saved.getWeightKg());
@@ -191,6 +195,20 @@ public class ProfileService {
             return false;
         }
         return left.compareTo(right) == 0;
+    }
+
+    /**
+     * 解析资料真实日期：请求有则用，缺省此刻；不允许明显未来。
+     */
+    private Instant resolveChangedAt(Instant requested) {
+        Instant now = Instant.now();
+        if (requested == null) {
+            return now;
+        }
+        if (requested.isAfter(now.plus(Duration.ofMinutes(5)))) {
+            throw new BusinessException("资料真实日期不能是未来时间");
+        }
+        return requested;
     }
 
     /**

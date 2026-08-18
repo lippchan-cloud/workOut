@@ -26,7 +26,9 @@ public class SpaFallbackController {
         "/register",
         "/record",
         "/record/**",
-        "/cms"
+        "/cms",
+        "/report",
+        "/report/**"
     })
     public String forwardSpaRoutes() {
         // 关键入口：深链回退，避免被当作缺失 API

@@ -3,15 +3,20 @@ package com.workout.record;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workout.support.TestUsernames;
-import java.nio.charset.StandardCharsets;
+import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Map;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -35,37 +40,34 @@ class CsvExportTest {
     @Test
     void exportWithDataShouldContainBomHeaderChineseTypeAndFilename() throws Exception {
         AuthUser user = register(TestUsernames.unique("csv_user"), "secret12");
+        putProfile(user.token(), "导出", 175.0, 70.0);
         create(user.token(), "CONSUME", "跑步", "2026-08-18T07:30:00+08:00");
 
         MvcResult result = mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
                         .param("date", "2026-08-18")
                         .header("Authorization", "Bearer " + user.token()))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("workout-2026-08-18.csv")))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("workout-2026-08-18.xlsx")))
                 .andReturn();
 
-        byte[] bytes = result.getResponse().getContentAsByteArray();
-        org.assertj.core.api.Assertions.assertThat(bytes[0]).isEqualTo((byte) 0xEF);
-        org.assertj.core.api.Assertions.assertThat(bytes[1]).isEqualTo((byte) 0xBB);
-        org.assertj.core.api.Assertions.assertThat(bytes[2]).isEqualTo((byte) 0xBF);
-        String csv = new String(bytes, StandardCharsets.UTF_8);
-        org.assertj.core.api.Assertions.assertThat(csv).contains("记录时间,类型,内容,昵称,身高cm,体重kg");
-        org.assertj.core.api.Assertions.assertThat(csv).contains("消耗");
-        org.assertj.core.api.Assertions.assertThat(csv).doesNotContain("CONSUME");
+        String items = sheetJoined(result.getResponse().getContentAsByteArray(), "事项列表");
+        org.assertj.core.api.Assertions.assertThat(items).contains("记录时间,类型,内容,昵称,身高cm,体重kg");
+        org.assertj.core.api.Assertions.assertThat(items).contains("消耗");
+        org.assertj.core.api.Assertions.assertThat(items).contains("跑步");
+        org.assertj.core.api.Assertions.assertThat(items).doesNotContain("CONSUME");
     }
 
     @Test
     void exportEmptyDayShouldContainHeaderOnly() throws Exception {
         AuthUser user = register(TestUsernames.unique("csv_empty"), "secret12");
+        putProfile(user.token(), "导出", 175.0, 70.0);
         MvcResult result = mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
                         .param("date", "2026-08-18")
                         .header("Authorization", "Bearer " + user.token()))
                 .andExpect(status().isOk())
                 .andReturn();
-        byte[] bytes = result.getResponse().getContentAsByteArray();
-        org.assertj.core.api.Assertions.assertThat(bytes[0]).isEqualTo((byte) 0xEF);
-        String csv = new String(bytes, StandardCharsets.UTF_8).replace("\uFEFF", "");
-        org.assertj.core.api.Assertions.assertThat(csv.trim()).isEqualTo("记录时间,类型,内容,昵称,身高cm,体重kg");
+        String items = sheetJoined(result.getResponse().getContentAsByteArray(), "事项列表");
+        org.assertj.core.api.Assertions.assertThat(items.trim()).isEqualTo("记录时间,类型,内容,昵称,身高cm,体重kg");
     }
 
     @Test
@@ -77,6 +79,7 @@ class CsvExportTest {
     @Test
     void exportYearMonthShouldContainBomChineseTypeFilenameAndOnlyThatMonth() throws Exception {
         AuthUser user = register(TestUsernames.unique("csv_ym"), "secret12");
+        putProfile(user.token(), "导出", 175.0, 70.0);
         create(user.token(), "CONSUME", "八月跑步", "2026-08-01T07:30:00+08:00");
         create(user.token(), "INTAKE", "八月早餐", "2026-08-31T08:00:00+08:00");
         create(user.token(), "CONSUME", "九月记录", "2026-09-01T00:30:00+08:00");
@@ -85,38 +88,36 @@ class CsvExportTest {
                         .param("yearMonth", "2026-08")
                         .header("Authorization", "Bearer " + user.token()))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("workout-2026-08.csv")))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("workout-2026-08.xlsx")))
                 .andReturn();
 
-        byte[] bytes = result.getResponse().getContentAsByteArray();
-        org.assertj.core.api.Assertions.assertThat(bytes[0]).isEqualTo((byte) 0xEF);
-        org.assertj.core.api.Assertions.assertThat(bytes[1]).isEqualTo((byte) 0xBB);
-        org.assertj.core.api.Assertions.assertThat(bytes[2]).isEqualTo((byte) 0xBF);
-        String csv = new String(bytes, StandardCharsets.UTF_8);
-        org.assertj.core.api.Assertions.assertThat(csv).contains("记录时间,类型,内容,昵称,身高cm,体重kg");
-        org.assertj.core.api.Assertions.assertThat(csv).contains("消耗");
-        org.assertj.core.api.Assertions.assertThat(csv).contains("摄入");
-        org.assertj.core.api.Assertions.assertThat(csv).contains("八月跑步");
-        org.assertj.core.api.Assertions.assertThat(csv).contains("八月早餐");
-        org.assertj.core.api.Assertions.assertThat(csv).doesNotContain("九月记录");
-        org.assertj.core.api.Assertions.assertThat(csv).doesNotContain("CONSUME");
+        String items = sheetJoined(result.getResponse().getContentAsByteArray(), "事项列表");
+        org.assertj.core.api.Assertions.assertThat(items).contains("记录时间,类型,内容,昵称,身高cm,体重kg");
+        org.assertj.core.api.Assertions.assertThat(items).contains("消耗");
+        org.assertj.core.api.Assertions.assertThat(items).contains("摄入");
+        org.assertj.core.api.Assertions.assertThat(items).contains("八月跑步");
+        org.assertj.core.api.Assertions.assertThat(items).contains("八月早餐");
+        org.assertj.core.api.Assertions.assertThat(items).doesNotContain("九月记录");
+        org.assertj.core.api.Assertions.assertThat(items).doesNotContain("CONSUME");
     }
 
     @Test
     void exportEmptyYearMonthShouldContainHeaderOnly() throws Exception {
         AuthUser user = register(TestUsernames.unique("csv_ym_empty"), "secret12");
+        putProfile(user.token(), "导出", 175.0, 70.0);
         MvcResult result = mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
                         .param("yearMonth", "2026-02")
                         .header("Authorization", "Bearer " + user.token()))
                 .andExpect(status().isOk())
                 .andReturn();
-        String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8).replace("\uFEFF", "");
-        org.assertj.core.api.Assertions.assertThat(csv.trim()).isEqualTo("记录时间,类型,内容,昵称,身高cm,体重kg");
+        String items = sheetJoined(result.getResponse().getContentAsByteArray(), "事项列表");
+        org.assertj.core.api.Assertions.assertThat(items.trim()).isEqualTo("记录时间,类型,内容,昵称,身高cm,体重kg");
     }
 
     @Test
     void exportRangeAcrossDaysShouldUseRangeFilename() throws Exception {
         AuthUser user = register(TestUsernames.unique("csv_range"), "secret12");
+        putProfile(user.token(), "导出", 175.0, 70.0);
         create(user.token(), "CONSUME", "区间内", "2026-08-01T07:30:00+08:00");
         create(user.token(), "INTAKE", "区间外", "2026-08-19T12:00:00+08:00");
 
@@ -127,16 +128,17 @@ class CsvExportTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string(
                         "Content-Disposition",
-                        org.hamcrest.Matchers.containsString("workout-2026-08-01_2026-08-18.csv")))
+                        org.hamcrest.Matchers.containsString("workout-2026-08-01_2026-08-18.xlsx")))
                 .andReturn();
-        String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
-        org.assertj.core.api.Assertions.assertThat(csv).contains("区间内");
-        org.assertj.core.api.Assertions.assertThat(csv).doesNotContain("区间外");
+        String items = sheetJoined(result.getResponse().getContentAsByteArray(), "事项列表");
+        org.assertj.core.api.Assertions.assertThat(items).contains("区间内");
+        org.assertj.core.api.Assertions.assertThat(items).doesNotContain("区间外");
     }
 
     @Test
     void exportSameDayRangeShouldUseDailyFilename() throws Exception {
         AuthUser user = register(TestUsernames.unique("csv_same"), "secret12");
+        putProfile(user.token(), "导出", 175.0, 70.0);
         create(user.token(), "CONSUME", "同日", "2026-08-18T07:30:00+08:00");
 
         mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
@@ -146,7 +148,7 @@ class CsvExportTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string(
                         "Content-Disposition",
-                        org.hamcrest.Matchers.containsString("workout-2026-08-18.csv")));
+                        org.hamcrest.Matchers.containsString("workout-2026-08-18.xlsx")));
     }
 
     @Test
@@ -169,6 +171,8 @@ class CsvExportTest {
     void exportShouldNotIncludeOtherUsersRows() throws Exception {
         AuthUser a = register(TestUsernames.unique("csv_a"), "secret12");
         AuthUser b = register(TestUsernames.unique("csv_b"), "secret12");
+        putProfile(a.token(), "A", 175.0, 70.0);
+        putProfile(b.token(), "B", 176.0, 71.0);
         create(a.token(), "INTAKE", "A的午餐", "2026-08-18T12:00:00+08:00");
 
         MvcResult result = mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
@@ -176,8 +180,8 @@ class CsvExportTest {
                         .header("Authorization", "Bearer " + b.token()))
                 .andExpect(status().isOk())
                 .andReturn();
-        String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
-        org.assertj.core.api.Assertions.assertThat(csv).doesNotContain("A的午餐");
+        String items = sheetJoined(result.getResponse().getContentAsByteArray(), "事项列表");
+        org.assertj.core.api.Assertions.assertThat(items).doesNotContain("A的午餐");
     }
 
     @Test
@@ -199,18 +203,100 @@ class CsvExportTest {
                         .header("Authorization", "Bearer " + user.token()))
                 .andExpect(status().isOk())
                 .andReturn();
-        String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
-        String early = java.util.Arrays.stream(csv.split("\\R"))
+        String items = sheetJoined(result.getResponse().getContentAsByteArray(), "事项列表");
+        String early = java.util.Arrays.stream(items.split("\\R"))
                 .filter(line -> line.contains("早训"))
                 .findFirst()
                 .orElse("");
-        String late = java.util.Arrays.stream(csv.split("\\R"))
+        String late = java.util.Arrays.stream(items.split("\\R"))
                 .filter(line -> line.contains("晚训"))
                 .findFirst()
                 .orElse("");
         org.assertj.core.api.Assertions.assertThat(early).contains("170");
         org.assertj.core.api.Assertions.assertThat(early).doesNotContain("180");
         org.assertj.core.api.Assertions.assertThat(late).contains("180");
+    }
+
+    @Test
+    void exportEmptyDayShouldBeXlsxWithTwoSheets() throws Exception {
+        AuthUser user = register(TestUsernames.unique("xlsx_empty"), "secret12");
+        putProfile(user.token(), "导出", 175.0, 70.0);
+        MvcResult result = mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
+                        .param("date", "2026-08-18")
+                        .header("Authorization", "Bearer " + user.token()))
+                .andExpect(status().isOk())
+                .andExpect(header().string(
+                        "Content-Disposition",
+                        org.hamcrest.Matchers.containsString("workout-2026-08-18.xlsx")))
+                .andReturn();
+        byte[] bytes = result.getResponse().getContentAsByteArray();
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
+            org.apache.poi.ss.usermodel.Sheet items = workbook.getSheet("事项列表");
+            org.apache.poi.ss.usermodel.Sheet curve = workbook.getSheet("成长曲线");
+            org.assertj.core.api.Assertions.assertThat(items).isNotNull();
+            org.assertj.core.api.Assertions.assertThat(curve).isNotNull();
+            org.assertj.core.api.Assertions.assertThat(joinRow(items.getRow(0)))
+                    .isEqualTo("记录时间,类型,内容,昵称,身高cm,体重kg");
+            org.assertj.core.api.Assertions.assertThat(joinRow(curve.getRow(0))).isEqualTo("时间,身高cm,体重kg");
+        }
+    }
+
+    private String sheetJoined(byte[] bytes, String sheetName) throws Exception {
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
+            Sheet sheet = workbook.getSheet(sheetName);
+            StringBuilder all = new StringBuilder();
+            for (Row row : sheet) {
+                all.append(joinRow(row)).append('\n');
+            }
+            return all.toString();
+        }
+    }
+
+    private String joinRow(Row row) {
+        StringBuilder line = new StringBuilder();
+        for (int i = 0; i < row.getLastCellNum(); i++) {
+            if (i > 0) {
+                line.append(',');
+            }
+            org.apache.poi.ss.usermodel.Cell cell = row.getCell(i);
+            line.append(cell == null ? "" : cell.toString().trim());
+        }
+        return line.toString();
+    }
+
+    @Test
+    void exportWithoutHeightOrWeightShouldReturn400() throws Exception {
+        AuthUser user = register(TestUsernames.unique("csv_nobody"), "secret12");
+        mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
+                        .param("date", "2026-08-18")
+                        .header("Authorization", "Bearer " + user.token()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.msg").value("请先填写身高和体重"));
+    }
+
+    @Test
+    void exportWithWeightOnlyShouldReturn400() throws Exception {
+        AuthUser user = register(TestUsernames.unique("csv_nowh"), "secret12");
+        putProfilePartial(user.token(), "半成品", null, 70.0);
+        mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
+                        .param("date", "2026-08-18")
+                        .header("Authorization", "Bearer " + user.token()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.msg").value("请先填写身高和体重"));
+    }
+
+    private void putProfilePartial(String token, String nickname, Double heightCm, double weightKg) throws Exception {
+        java.util.HashMap<String, Object> inner = new java.util.HashMap<>();
+        inner.put("nickname", nickname);
+        inner.put("weightKg", weightKg);
+        if (heightCm != null) {
+            inner.put("heightCm", heightCm);
+        }
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/profile")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("request", inner))))
+                .andExpect(status().isOk());
     }
 
     private void putProfile(String token, String nickname, double heightCm, double weightKg) throws Exception {

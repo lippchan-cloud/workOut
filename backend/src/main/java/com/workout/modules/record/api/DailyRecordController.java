@@ -136,7 +136,7 @@ public class DailyRecordController {
     }
 
     /**
-     * 按当前筛选导出当前用户 CSV（UTF-8 BOM）。
+     * 按当前筛选导出当前用户 xlsx（事项列表 + 成长曲线）。
      */
     @GetMapping("/exportCsv")
     public void exportCsv(
@@ -156,18 +156,16 @@ public class DailyRecordController {
                 to);
         // 与列表共用 period 解析，保证筛选一致且带 JWT userId
         RecordQueryPeriod period = dailyRecordService.resolvePeriod(date, yearMonth, from, to);
-        byte[] csv = dailyRecordService.exportCsv(principal.getUserId(), period);
-        // 文件名随模式变化：整月 YYYY-MM，同日 YYYY-MM-DD，跨日用下划线
-        String filename = period.csvFilename();
+        byte[] xlsx = dailyRecordService.exportCsv(principal.getUserId(), period);
+        String filename = period.xlsxFilename();
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.setContentType("text/csv; charset=UTF-8");
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
-        // 写出带 BOM 的 CSV 字节
-        response.getOutputStream().write(csv);
+        response.getOutputStream().write(xlsx);
         log.info(
                 "[日记录] DailyRecordController.exportCsv done userId={}, filename={}, bytes={}",
                 principal.getUserId(),
                 filename,
-                csv.length);
+                xlsx.length);
     }
 }

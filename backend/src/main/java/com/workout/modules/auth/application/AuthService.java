@@ -10,6 +10,7 @@ import com.workout.modules.auth.infrastructure.UserRepository;
 import com.workout.modules.profile.infrastructure.ProfileHistoryRepository;
 import com.workout.modules.profile.infrastructure.ProfileRepository;
 import com.workout.modules.record.infrastructure.DailyRecordRepository;
+import com.workout.modules.share.infrastructure.ShareReportRepository;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ public class AuthService {
     private final DailyRecordRepository dailyRecordRepository;
     private final ProfileRepository profileRepository;
     private final ProfileHistoryRepository profileHistoryRepository;
+    private final ShareReportRepository shareReportRepository;
 
     /**
      * 注入注册、改密与注销所需依赖。
@@ -44,7 +46,8 @@ public class AuthService {
             AdminProperties adminProperties,
             DailyRecordRepository dailyRecordRepository,
             ProfileRepository profileRepository,
-            ProfileHistoryRepository profileHistoryRepository) {
+            ProfileHistoryRepository profileHistoryRepository,
+            ShareReportRepository shareReportRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -52,6 +55,7 @@ public class AuthService {
         this.dailyRecordRepository = dailyRecordRepository;
         this.profileRepository = profileRepository;
         this.profileHistoryRepository = profileHistoryRepository;
+        this.shareReportRepository = shareReportRepository;
     }
 
     /**
@@ -176,6 +180,8 @@ public class AuthService {
         dailyRecordRepository.deleteByUserId(userId);
         profileHistoryRepository.deleteByUserId(userId);
         log.info("[鉴权注销] deleted profile history userId={}", userId);
+        shareReportRepository.deleteByUserId(userId);
+        log.info("[鉴权注销] deleted share reports userId={}", userId);
         profileRepository.deleteByUserId(userId);
         userRepository.delete(user);
         log.info("[鉴权注销] deleteMe done userId={}, elapsedMs={}", userId, System.currentTimeMillis() - startMs);

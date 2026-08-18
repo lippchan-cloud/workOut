@@ -9,6 +9,15 @@ function LocationProbe() {
   return <div data-testid="location">{`${location.pathname}${location.search}`}</div>;
 }
 
+function completeProfileResponse() {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => ({ code: 200, data: { nickname: "小明", heightCm: 175, weightKg: 70 } }),
+    blob: async () => new Blob(["xlsx"]),
+  };
+}
+
 describe("csv export click", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -19,11 +28,16 @@ describe("csv export click", () => {
     localStorage.setItem("workout_token", "tok");
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ code: 200, data: { list: [] } }),
-        blob: async () => new Blob(["csv"]),
+      vi.fn().mockImplementation(async (url: string) => {
+        if (String(url).includes("/api/v1/profile") && !String(url).includes("export")) {
+          return completeProfileResponse();
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ code: 200, data: { list: [] } }),
+          blob: async () => new Blob(["xlsx"]),
+        };
       }),
     );
     vi.stubGlobal("URL", {
@@ -37,17 +51,22 @@ describe("csv export click", () => {
         <App />
       </MemoryRouter>,
     );
-    await user.click(screen.getByRole("button", { name: "导出 CSV" }));
+    await user.click(screen.getByRole("button", { name: "导出" }));
     expect(clickSpy).toHaveBeenCalled();
   });
 
   it("exports csv with yearMonth in month mode", async () => {
     localStorage.setItem("workout_token", "tok");
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ code: 200, data: { list: [] } }),
-      blob: async () => new Blob(["csv"]),
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (String(url).includes("/api/v1/profile") && !String(url).includes("export")) {
+        return completeProfileResponse();
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ code: 200, data: { list: [] } }),
+        blob: async () => new Blob(["xlsx"]),
+      };
     });
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("URL", {
@@ -63,7 +82,7 @@ describe("csv export click", () => {
     );
     await user.click(screen.getByRole("button", { name: "按月" }));
     fireEvent.change(screen.getByLabelText("选择月份"), { target: { value: "2026-08" } });
-    await user.click(screen.getByRole("button", { name: "导出 CSV" }));
+    await user.click(screen.getByRole("button", { name: "导出" }));
     const exportUrl = fetchMock.mock.calls.map((call) => String(call[0])).find((url) => url.includes("exportCsv"));
     expect(exportUrl).toContain("yearMonth=2026-08");
     expect(exportUrl).not.toContain("date=");
@@ -77,7 +96,7 @@ describe("csv export click", () => {
         <App />
       </MemoryRouter>,
     );
-    await user.click(screen.getByRole("button", { name: "导出 CSV" }));
+    await user.click(screen.getByRole("button", { name: "导出" }));
     expect(await screen.findByTestId("location")).toHaveTextContent("/login?redirect=/calendar");
   });
 });

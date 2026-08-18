@@ -320,12 +320,10 @@ describe("CalendarPage", () => {
 
   it("opens trends from calendar and back returns to calendar", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(emptyListResponse()));
-    const user = userEvent.setup();
     renderCalendar();
-    await user.click(screen.getByRole("button", { name: "变化曲线" }));
-    expect(screen.getByTestId("location")).toHaveTextContent("/calendar/trends");
-    await user.click(screen.getByRole("button", { name: "返回" }));
-    expect(screen.getByTestId("location")).toHaveTextContent("/calendar");
+    expect(screen.queryByRole("button", { name: "变化曲线" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "导出" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "分享" })).toBeInTheDocument();
   });
 
   it("shows empty state on trends when there is no body history", async () => {
@@ -339,11 +337,36 @@ describe("CalendarPage", () => {
             json: async () => ({ code: 200, msg: "OK", data: { bodyHistory: [], recordCounts: [] } }),
           };
         }
+        if (String(url).includes("/api/v1/profile")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ code: 200, data: { nickname: null, heightCm: null, weightKg: null } }),
+          };
+        }
         return emptyListResponse();
       }),
     );
     renderCalendar("/calendar/trends");
-    expect(await screen.findByText("还没有身体变化数据")).toBeInTheDocument();
-    expect(screen.queryByRole("img", { name: "变化曲线图" })).not.toBeInTheDocument();
+    expect(await screen.findByTestId("location")).toHaveTextContent("/profile/body");
+  });
+
+  it("intercepts export when height or weight is missing", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (String(url).includes("/api/v1/profile")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ code: 200, data: { nickname: "半", heightCm: null, weightKg: 70 } }),
+        };
+      }
+      return emptyListResponse();
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderCalendar();
+    await user.click(await screen.findByRole("button", { name: "导出" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent("/profile/body");
+    expect(fetchMock.mock.calls.every((call) => !String(call[0]).includes("exportCsv"))).toBe(true);
   });
 });
