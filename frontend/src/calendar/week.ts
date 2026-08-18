@@ -64,6 +64,27 @@ export function formatShanghaiYmd(isoOrDate: string | Date): string {
 }
 
 /**
+ * 上海时区时分 HH:mm，供日列表展示。
+ */
+export function formatShanghaiHm(isoOrDate: string | Date): string {
+  const date = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;
+  return date.toLocaleTimeString("en-GB", {
+    timeZone: "Asia/Shanghai",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+/**
+ * 上海时区月日+时分，供月/区间列表展示。
+ */
+export function formatShanghaiMdHm(isoOrDate: string | Date): string {
+  const date = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;
+  return `${formatShanghaiYmd(date).slice(5)} ${formatShanghaiHm(date)}`;
+}
+
+/**
  * 将记录按上海时区自然日聚合条数，供周格子气泡一次计算。
  */
 export function countByLocalYmd(records: { recordedAt: string }[]): Record<string, number> {

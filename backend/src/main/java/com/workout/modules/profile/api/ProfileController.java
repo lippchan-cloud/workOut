@@ -46,6 +46,22 @@ public class ProfileController {
     }
 
     /**
+     * 读取身体历史与按日条数，供日历二级变化曲线。
+     */
+    @GetMapping("/trends")
+    public ApiResponse<ProfileTrendsResponse> trends() {
+        AuthPrincipal principal = CurrentUser.require();
+        log.info("[资料] ProfileController.trends start userId={}", principal.getUserId());
+        ProfileTrendsResponse data = profileService.trends(principal.getUserId());
+        log.info(
+                "[资料] ProfileController.trends done userId={}, historySize={}, countDays={}",
+                principal.getUserId(),
+                data.getBodyHistory().size(),
+                data.getRecordCounts().size());
+        return ApiResponse.ok(data);
+    }
+
+    /**
      * 保存当前用户资料。
      */
     @PutMapping

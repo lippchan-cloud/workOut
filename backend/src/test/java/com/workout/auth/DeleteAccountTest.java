@@ -62,6 +62,20 @@ class DeleteAccountTest {
                 .andExpect(jsonPath("$.data.list.length()").value(0));
     }
 
+    @Test
+    void deleteAccountWithProfileHistoryShouldSucceed() throws Exception {
+        AuthUser alice = register(TestUsernames.unique("gone_hist"), "secret12");
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/profile")
+                        .header("Authorization", "Bearer " + alice.token())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "request", Map.of("nickname", "将注销", "heightCm", 170.0, "weightKg", 60.0)))))
+                .andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/auth/me").header("Authorization", "Bearer " + alice.token()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
     private AuthUser register(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

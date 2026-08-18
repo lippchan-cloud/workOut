@@ -7,6 +7,7 @@ import com.workout.modules.auth.domain.UserRole;
 import com.workout.modules.auth.infrastructure.JwtService;
 import com.workout.modules.auth.infrastructure.UserEntity;
 import com.workout.modules.auth.infrastructure.UserRepository;
+import com.workout.modules.profile.infrastructure.ProfileHistoryRepository;
 import com.workout.modules.profile.infrastructure.ProfileRepository;
 import com.workout.modules.record.infrastructure.DailyRecordRepository;
 import java.time.Instant;
@@ -31,6 +32,7 @@ public class AuthService {
     private final AdminProperties adminProperties;
     private final DailyRecordRepository dailyRecordRepository;
     private final ProfileRepository profileRepository;
+    private final ProfileHistoryRepository profileHistoryRepository;
 
     /**
      * 注入注册、改密与注销所需依赖。
@@ -41,13 +43,15 @@ public class AuthService {
             JwtService jwtService,
             AdminProperties adminProperties,
             DailyRecordRepository dailyRecordRepository,
-            ProfileRepository profileRepository) {
+            ProfileRepository profileRepository,
+            ProfileHistoryRepository profileHistoryRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.adminProperties = adminProperties;
         this.dailyRecordRepository = dailyRecordRepository;
         this.profileRepository = profileRepository;
+        this.profileHistoryRepository = profileHistoryRepository;
     }
 
     /**
@@ -170,6 +174,8 @@ public class AuthService {
         log.info("[鉴权注销] loaded entityType=UserEntity id={}, username={}", user.getId(), user.getUsername());
         // 先按 userId 批量删从属数据，禁止循环 deleteById
         dailyRecordRepository.deleteByUserId(userId);
+        profileHistoryRepository.deleteByUserId(userId);
+        log.info("[鉴权注销] deleted profile history userId={}", userId);
         profileRepository.deleteByUserId(userId);
         userRepository.delete(user);
         log.info("[鉴权注销] deleteMe done userId={}, elapsedMs={}", userId, System.currentTimeMillis() - startMs);

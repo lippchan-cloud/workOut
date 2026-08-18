@@ -131,6 +131,8 @@ describe("CalendarPage", () => {
     expect(intake.closest("li")).toHaveClass("record-intake");
     expect(consume.closest("li")).toHaveStyle({ color: "#16A34A" });
     expect(intake.closest("li")).toHaveStyle({ color: "#DC2626" });
+    expect(screen.getByText("07:30")).toBeInTheDocument();
+    expect(screen.getByText("08:00")).toBeInTheDocument();
   });
 
   it("switches to previous week", async () => {
@@ -183,6 +185,8 @@ describe("CalendarPage", () => {
     expect(intake.closest("li")).toHaveClass("record-intake");
     expect(consume.closest("li")).toHaveStyle({ color: "#16A34A" });
     expect(intake.closest("li")).toHaveStyle({ color: "#DC2626" });
+    expect(screen.getByText("08-01 07:30")).toBeInTheDocument();
+    expect(screen.getByText("08-31 08:00")).toBeInTheDocument();
   });
 
   it("jumps to a date outside the visible week", async () => {
@@ -251,7 +255,7 @@ describe("CalendarPage", () => {
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
     renderCalendar("/calendar?date=2026-08-18");
-    await user.click(await screen.findByRole("button", { name: "跑步" }));
+    await user.click(await screen.findByRole("button", { name: /跑步/ }));
     expect(await screen.findByTestId("location")).toHaveTextContent("/calendar/records/9");
     await waitFor(() => {
       expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/v1/dailyRecords/9"))).toBe(true);
@@ -265,7 +269,7 @@ describe("CalendarPage", () => {
     vi.stubGlobal("fetch", fetchListAndDetail([sampleRun]));
     const user = userEvent.setup();
     renderCalendar("/calendar?date=2026-08-18");
-    await user.click(await screen.findByRole("button", { name: "跑步" }));
+    await user.click(await screen.findByRole("button", { name: /跑步/ }));
     await user.click(await screen.findByRole("button", { name: "编辑" }));
     expect(await screen.findByDisplayValue("跑步")).toBeInTheDocument();
   });
@@ -276,7 +280,7 @@ describe("CalendarPage", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
     const user = userEvent.setup();
     renderCalendar("/calendar?date=2026-08-18");
-    await user.click(await screen.findByRole("button", { name: "跑步" }));
+    await user.click(await screen.findByRole("button", { name: /跑步/ }));
     await user.click(await screen.findByRole("button", { name: "删除" }));
     expect(confirmSpy).toHaveBeenCalled();
     expect(fetchMock.mock.calls.some((call) => call[1]?.method === "DELETE")).toBe(false);
@@ -312,5 +316,34 @@ describe("CalendarPage", () => {
     await user.click(await screen.findByRole("button", { name: "消耗" }));
     const datetime = screen.getByLabelText("记录时间") as HTMLInputElement;
     expect(datetime.value.startsWith("2026-08-10")).toBe(true);
+  });
+
+  it("opens trends from calendar and back returns to calendar", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(emptyListResponse()));
+    const user = userEvent.setup();
+    renderCalendar();
+    await user.click(screen.getByRole("button", { name: "变化曲线" }));
+    expect(screen.getByTestId("location")).toHaveTextContent("/calendar/trends");
+    await user.click(screen.getByRole("button", { name: "返回" }));
+    expect(screen.getByTestId("location")).toHaveTextContent("/calendar");
+  });
+
+  it("shows empty state on trends when there is no body history", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        if (String(url).includes("/profile/trends")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ code: 200, msg: "OK", data: { bodyHistory: [], recordCounts: [] } }),
+          };
+        }
+        return emptyListResponse();
+      }),
+    );
+    renderCalendar("/calendar/trends");
+    expect(await screen.findByText("还没有身体变化数据")).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "变化曲线图" })).not.toBeInTheDocument();
   });
 });

@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workout.support.TestUsernames;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +49,7 @@ class CsvExportTest {
         org.assertj.core.api.Assertions.assertThat(bytes[1]).isEqualTo((byte) 0xBB);
         org.assertj.core.api.Assertions.assertThat(bytes[2]).isEqualTo((byte) 0xBF);
         String csv = new String(bytes, StandardCharsets.UTF_8);
-        org.assertj.core.api.Assertions.assertThat(csv).contains("记录时间,类型,内容");
+        org.assertj.core.api.Assertions.assertThat(csv).contains("记录时间,类型,内容,昵称,身高cm,体重kg");
         org.assertj.core.api.Assertions.assertThat(csv).contains("消耗");
         org.assertj.core.api.Assertions.assertThat(csv).doesNotContain("CONSUME");
     }
@@ -60,8 +62,10 @@ class CsvExportTest {
                         .header("Authorization", "Bearer " + user.token()))
                 .andExpect(status().isOk())
                 .andReturn();
-        String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8).replace("\uFEFF", "");
-        org.assertj.core.api.Assertions.assertThat(csv.trim()).isEqualTo("记录时间,类型,内容");
+        byte[] bytes = result.getResponse().getContentAsByteArray();
+        org.assertj.core.api.Assertions.assertThat(bytes[0]).isEqualTo((byte) 0xEF);
+        String csv = new String(bytes, StandardCharsets.UTF_8).replace("\uFEFF", "");
+        org.assertj.core.api.Assertions.assertThat(csv.trim()).isEqualTo("记录时间,类型,内容,昵称,身高cm,体重kg");
     }
 
     @Test
@@ -89,7 +93,7 @@ class CsvExportTest {
         org.assertj.core.api.Assertions.assertThat(bytes[1]).isEqualTo((byte) 0xBB);
         org.assertj.core.api.Assertions.assertThat(bytes[2]).isEqualTo((byte) 0xBF);
         String csv = new String(bytes, StandardCharsets.UTF_8);
-        org.assertj.core.api.Assertions.assertThat(csv).contains("记录时间,类型,内容");
+        org.assertj.core.api.Assertions.assertThat(csv).contains("记录时间,类型,内容,昵称,身高cm,体重kg");
         org.assertj.core.api.Assertions.assertThat(csv).contains("消耗");
         org.assertj.core.api.Assertions.assertThat(csv).contains("摄入");
         org.assertj.core.api.Assertions.assertThat(csv).contains("八月跑步");
@@ -107,7 +111,7 @@ class CsvExportTest {
                 .andExpect(status().isOk())
                 .andReturn();
         String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8).replace("\uFEFF", "");
-        org.assertj.core.api.Assertions.assertThat(csv.trim()).isEqualTo("记录时间,类型,内容");
+        org.assertj.core.api.Assertions.assertThat(csv.trim()).isEqualTo("记录时间,类型,内容,昵称,身高cm,体重kg");
     }
 
     @Test
@@ -174,6 +178,49 @@ class CsvExportTest {
                 .andReturn();
         String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
         org.assertj.core.api.Assertions.assertThat(csv).doesNotContain("A的午餐");
+    }
+
+    @Test
+    void exportRowsShouldAlignHeightToHistoryAtRecordedAt() throws Exception {
+        AuthUser user = register(TestUsernames.unique("csv_hist"), "secret12");
+        putProfile(user.token(), "对齐", 170.0, 70.0);
+        Instant earlyAt = Instant.now().plusSeconds(1);
+        create(user.token(), "CONSUME", "早训", earlyAt.toString());
+        Thread.sleep(1300);
+        putProfile(user.token(), "对齐", 180.0, 70.0);
+        Instant lateAt = Instant.now().plusSeconds(1);
+        create(user.token(), "CONSUME", "晚训", lateAt.toString());
+
+        String from = earlyAt.atZone(ZoneId.of("Asia/Shanghai")).toLocalDate().toString();
+        String to = lateAt.atZone(ZoneId.of("Asia/Shanghai")).toLocalDate().toString();
+        MvcResult result = mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
+                        .param("from", from)
+                        .param("to", to)
+                        .header("Authorization", "Bearer " + user.token()))
+                .andExpect(status().isOk())
+                .andReturn();
+        String csv = new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+        String early = java.util.Arrays.stream(csv.split("\\R"))
+                .filter(line -> line.contains("早训"))
+                .findFirst()
+                .orElse("");
+        String late = java.util.Arrays.stream(csv.split("\\R"))
+                .filter(line -> line.contains("晚训"))
+                .findFirst()
+                .orElse("");
+        org.assertj.core.api.Assertions.assertThat(early).contains("170");
+        org.assertj.core.api.Assertions.assertThat(early).doesNotContain("180");
+        org.assertj.core.api.Assertions.assertThat(late).contains("180");
+    }
+
+    private void putProfile(String token, String nickname, double heightCm, double weightKg) throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/profile")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "request",
+                                Map.of("nickname", nickname, "heightCm", heightCm, "weightKg", weightKg)))))
+                .andExpect(status().isOk());
     }
 
     private void create(String token, String type, String content, String recordedAt) throws Exception {

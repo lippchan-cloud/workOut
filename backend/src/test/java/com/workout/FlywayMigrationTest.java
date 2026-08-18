@@ -36,6 +36,6 @@ class FlywayMigrationTest {
             }
         }
 
-        assertThat(tables).contains("work_out_user", "work_out_daily_record", "work_out_profile");
+        assertThat(tables).contains("work_out_user", "work_out_daily_record", "work_out_profile", "work_out_profile_history");
     }
 }

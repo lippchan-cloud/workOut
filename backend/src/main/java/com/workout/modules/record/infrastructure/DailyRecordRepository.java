@@ -3,6 +3,8 @@ package com.workout.modules.record.infrastructure;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * 日记录仓储（数据访问层）。
@@ -25,4 +27,10 @@ public interface DailyRecordRepository extends JpaRepository<DailyRecordEntity, 
      * 按用户批量物理删除全部日记录（注销账号），禁止循环 deleteById。
      */
     void deleteByUserId(Long userId);
+
+    /**
+     * 一次查出当前用户未删除记录的 recordedAt，供曲线按日聚合，禁止按日循环。
+     */
+    @Query("select r.recordedAt from DailyRecordEntity r where r.userId = :userId and r.deleted = false")
+    List<Instant> findRecordedAtByUserIdAndDeletedFalse(@Param("userId") Long userId);
 }

@@ -2,12 +2,16 @@ package com.workout.modules.record.application;
 
 import com.workout.common.BusinessException;
 import com.workout.common.NotFoundException;
+import com.workout.modules.profile.domain.ProfileHistoryResolver;
+import com.workout.modules.profile.infrastructure.ProfileHistoryEntity;
+import com.workout.modules.profile.infrastructure.ProfileHistoryRepository;
 import com.workout.modules.record.api.CreateDailyRecordRequest;
 import com.workout.modules.record.api.DailyRecordResponse;
 import com.workout.modules.record.domain.RecordQueryPeriod;
 import com.workout.modules.record.domain.RecordType;
 import com.workout.modules.record.infrastructure.DailyRecordEntity;
 import com.workout.modules.record.infrastructure.DailyRecordRepository;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -35,12 +39,15 @@ public class DailyRecordService {
     private static final int MAX_CONTENT = 500;
 
     private final DailyRecordRepository dailyRecordRepository;
+    private final ProfileHistoryRepository profileHistoryRepository;
 
     /**
-     * 注入仓储。
+     * 注入日记录与身体历史仓储。
      */
-    public DailyRecordService(DailyRecordRepository dailyRecordRepository) {
+    public DailyRecordService(
+            DailyRecordRepository dailyRecordRepository, ProfileHistoryRepository profileHistoryRepository) {
         this.dailyRecordRepository = dailyRecordRepository;
+        this.profileHistoryRepository = profileHistoryRepository;
     }
 
     /**
@@ -325,15 +332,28 @@ public class DailyRecordService {
                 period.getTo());
         // 复用区间列表查询，保证导出与列表同一批数据
         List<DailyRecordResponse> list = listByPeriod(userId, period);
+        // 一次加载该用户历史，内存按 recordedAt 匹配，禁止按行查库
+        List<ProfileHistoryEntity> history =
+                profileHistoryRepository.findByUserIdOrderByChangedAtAscIdAsc(userId);
+        log.info(
+                "[日记录] exportCsv loaded history entityType=ProfileHistoryEntity size={}",
+                history.size());
         StringBuilder body = new StringBuilder();
-        body.append("记录时间,类型,内容\n");
+        body.append("记录时间,类型,内容,昵称,身高cm,体重kg\n");
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(SHANGHAI);
         for (DailyRecordResponse row : list) {
+            ProfileHistoryEntity snapshot = ProfileHistoryResolver.resolve(history, row.getRecordedAt());
             body.append(formatter.format(row.getRecordedAt()))
                     .append(',')
                     .append(row.getType() == RecordType.CONSUME ? "消耗" : "摄入")
                     .append(',')
                     .append(escapeCsv(row.getContent()))
+                    .append(',')
+                    .append(snapshot == null || snapshot.getNickname() == null ? "" : escapeCsv(snapshot.getNickname()))
+                    .append(',')
+                    .append(formatDecimal(snapshot == null ? null : snapshot.getHeightCm()))
+                    .append(',')
+                    .append(formatDecimal(snapshot == null ? null : snapshot.getWeightKg()))
                     .append('\n');
         }
         byte[] bom = new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
@@ -373,5 +393,15 @@ public class DailyRecordService {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;
+    }
+
+    /**
+     * 身高体重导出为纯数字文本；空则空串。
+     */
+    private String formatDecimal(BigDecimal value) {
+        if (value == null) {
+            return "";
+        }
+        return value.stripTrailingZeros().toPlainString();
     }
 }
