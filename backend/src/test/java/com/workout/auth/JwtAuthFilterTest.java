@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.workout.support.TestUsernames;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +38,7 @@ class JwtAuthFilterTest {
 
     @Test
     void validTokenOnProtectedStubShouldReturn200() throws Exception {
-        String token = registerAndGetToken("frank", "secret12");
+        String token = registerAndGetToken(TestUsernames.unique("frank"), "secret12");
 
         mockMvc.perform(get("/api/v1/secure/ping").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -47,14 +48,15 @@ class JwtAuthFilterTest {
 
     @Test
     void authEndpointsRemainPublic() throws Exception {
+        String username = TestUsernames.unique("gina");
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(authBody("gina", "secret12")))
+                        .content(authBody(username, "secret12")))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(authBody("gina", "secret12")))
+                        .content(authBody(username, "secret12")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.token").isString());
     }

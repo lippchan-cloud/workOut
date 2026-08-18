@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.workout.support.TestUsernames;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,7 @@ class ProfileUpsertTest {
 
     @Test
     void putThenGetShouldEchoSavedProfile() throws Exception {
-        String token = register("prof_a", "secret12");
+        String token = register(TestUsernames.unique("prof_a"), "secret12");
         mockMvc.perform(put("/api/v1/profile")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -48,7 +49,7 @@ class ProfileUpsertTest {
 
     @Test
     void heightOutOfRangeShouldReturn400() throws Exception {
-        String token = register("prof_h", "secret12");
+        String token = register(TestUsernames.unique("prof_h"), "secret12");
         mockMvc.perform(put("/api/v1/profile")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -60,8 +61,8 @@ class ProfileUpsertTest {
 
     @Test
     void userBMustNotReadUserAProfile() throws Exception {
-        String tokenA = register("prof_iso_a", "secret12");
-        String tokenB = register("prof_iso_b", "secret12");
+        String tokenA = register(TestUsernames.unique("prof_iso_a"), "secret12");
+        String tokenB = register(TestUsernames.unique("prof_iso_b"), "secret12");
         mockMvc.perform(put("/api/v1/profile")
                         .header("Authorization", "Bearer " + tokenA)
                         .contentType(MediaType.APPLICATION_JSON)

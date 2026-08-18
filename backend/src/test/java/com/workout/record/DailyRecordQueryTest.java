@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.workout.support.TestUsernames;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +31,7 @@ class DailyRecordQueryTest {
 
     @Test
     void sameDayRecordsShouldBeOrderedByRecordedAtThenId() throws Exception {
-        AuthUser user = register("query_user", "secret12");
+        AuthUser user = register(TestUsernames.unique("query_user"), "secret12");
         create(user.token(), "INTAKE", "早餐", "2026-08-18T08:00:00+08:00");
         create(user.token(), "CONSUME", "晨跑", "2026-08-18T07:30:00+08:00");
 

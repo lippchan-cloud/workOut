@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.workout.support.TestUsernames;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,25 +28,27 @@ class AuthLoginTest {
 
     @Test
     void loginShouldReturnTokenWhenPasswordMatches() throws Exception {
-        register("dave", "secret12");
+        String username = TestUsernames.unique("dave");
+        register(username, "secret12");
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginBody("dave", "secret12")))
+                        .content(loginBody(username, "secret12")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.token").isString())
                 .andExpect(jsonPath("$.data.userId").isNumber())
-                .andExpect(jsonPath("$.data.username").value("dave"));
+                .andExpect(jsonPath("$.data.username").value(username));
     }
 
     @Test
     void wrongPasswordShouldReturnGenericChineseErrorWithoutToken() throws Exception {
-        register("erin", "secret12");
+        String username = TestUsernames.unique("erin");
+        register(username, "secret12");
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginBody("erin", "wrongpwd")))
+                        .content(loginBody(username, "wrongpwd")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.msg").value("用户名或密码错误"))
                 .andExpect(jsonPath("$.data.token").doesNotExist());
@@ -55,7 +58,7 @@ class AuthLoginTest {
     void unknownUsernameShouldReturnSameGenericErrorWithoutToken() throws Exception {
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginBody("nobody_yet", "secret12")))
+                        .content(loginBody(TestUsernames.unique("nobody"), "secret12")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.msg").value("用户名或密码错误"))
                 .andExpect(jsonPath("$.data.token").doesNotExist());

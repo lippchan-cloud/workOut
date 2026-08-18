@@ -80,7 +80,7 @@ TDD 验证记录      →  红绿证据台账（本仓库可审计）
 | 项 | 约定 |
 | --- | --- |
 | 框架 | JUnit 5 + Spring Boot Test + MockMvc |
-| 测试库 | H2 `MODE=MySQL` + Flyway（`application-test.yml`） |
+| 测试库 | SQLPub MySQL（`application-test.yml`，与主库同实例）+ Flyway；用例用 UUID 后缀用户名隔离 |
 | 窄测命令 | `mvn -q test -Dtest=ClassName` 或 `ClassName#method` |
 | 身份 | 业务测试不得信任客户端 `userId`；JWT 场景用签发测试 Token |
 | 日志 | 生产代码遵循 `java-architecture-master`：public 入口 `log.info`（脱敏） |

@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.workout.support.TestUsernames;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +35,7 @@ class DailyRecordCreateTest {
 
     @Test
     void createConsumeShouldPersistWithJwtUserId() throws Exception {
-        AuthUser alice = register("alice_rec", "secret12");
+        AuthUser alice = register(TestUsernames.unique("alice_rec"), "secret12");
 
         MvcResult result = mockMvc.perform(post("/api/v1/dailyRecords")
                         .header("Authorization", "Bearer " + alice.token())
@@ -63,7 +64,7 @@ class DailyRecordCreateTest {
 
     @Test
     void emptyContentShouldReturn400() throws Exception {
-        AuthUser alice = register("alice_empty", "secret12");
+        AuthUser alice = register(TestUsernames.unique("alice_empty"), "secret12");
 
         mockMvc.perform(post("/api/v1/dailyRecords")
                         .header("Authorization", "Bearer " + alice.token())
@@ -80,7 +81,7 @@ class DailyRecordCreateTest {
 
     @Test
     void contentLongerThan500ShouldReturn400() throws Exception {
-        AuthUser alice = register("alice_long", "secret12");
+        AuthUser alice = register(TestUsernames.unique("alice_long"), "secret12");
         String content = "a".repeat(501);
 
         mockMvc.perform(post("/api/v1/dailyRecords")

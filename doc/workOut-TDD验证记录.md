@@ -46,9 +46,18 @@
 ## §1.1 — Backend 脚手架（非行为 TDD）
 
 - 对应：`openspec/.../tasks.md` 1.1
-- 说明：创建 `backend/` Spring Boot 3.3.5、依赖 Web/Validation/JPA/Security/Flyway/MySQL/H2/JJWT、入口 `WorkOutApplication`
+- 说明：创建 `backend/` Spring Boot 3.3.5、依赖 Web/Validation/JPA/Security/Flyway/MySQL/JJWT、入口 `WorkOutApplication`
 - 验证：`cd backend && mvn -q test -Dtest=FlywayMigrationTest` 能启动上下文（见 §1.2）
 - 备注：脚手架本身无 Scenario 断言；业务行为不得借本任务偷跑
+
+---
+
+## §测试库 — 直连 SQLPub（2026-08-18）
+
+- 变更：`application-test.yml` 指向与主配置相同的 SQLPub MySQL（`inv_doc`）；移除 H2 依赖
+- 隔离：测试注册用户名经 `TestUsernames.unique(prefix)` 追加 8 位 UUID 后缀，避免固定用户名冲突；**不保证回滚**，会在真实库留下测试行
+- Flyway：仅跑未记录迁移（`V1__init.sql` 建 workout 表），不改其它业务表
+- 验证：`cd backend && mvn test`（需外网访问 SQLPub）
 
 ---
 
@@ -421,5 +430,5 @@
 ## §9.2 — 不 push / 无密钥
 
 - 未执行 `git push`
-- `application.yml` 使用 `${WORKOUT_DB_PASSWORD:}` / `${WORKOUT_JWT_SECRET:...}` 占位，未写入真实密码
+- 连接信息见私有仓 `application.yml` / `application-test.yml` 与 `doc/workOut-数据库连接.md`；可用 `WORKOUT_*` 覆盖
 - 勾选：tasks.md 9.2

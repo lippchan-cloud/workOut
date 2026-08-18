@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.workout.support.TestUsernames;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class CsvExportTest {
 
     @Test
     void exportWithDataShouldContainBomHeaderChineseTypeAndFilename() throws Exception {
-        AuthUser user = register("csv_user", "secret12");
+        AuthUser user = register(TestUsernames.unique("csv_user"), "secret12");
         create(user.token(), "CONSUME", "跑步", "2026-08-18T07:30:00+08:00");
 
         MvcResult result = mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
@@ -53,7 +54,7 @@ class CsvExportTest {
 
     @Test
     void exportEmptyDayShouldContainHeaderOnly() throws Exception {
-        AuthUser user = register("csv_empty", "secret12");
+        AuthUser user = register(TestUsernames.unique("csv_empty"), "secret12");
         MvcResult result = mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")
                         .param("date", "2026-08-18")
                         .header("Authorization", "Bearer " + user.token()))
@@ -71,8 +72,8 @@ class CsvExportTest {
 
     @Test
     void exportShouldNotIncludeOtherUsersRows() throws Exception {
-        AuthUser a = register("csv_a", "secret12");
-        AuthUser b = register("csv_b", "secret12");
+        AuthUser a = register(TestUsernames.unique("csv_a"), "secret12");
+        AuthUser b = register(TestUsernames.unique("csv_b"), "secret12");
         create(a.token(), "INTAKE", "A的午餐", "2026-08-18T12:00:00+08:00");
 
         MvcResult result = mockMvc.perform(get("/api/v1/dailyRecords/exportCsv")

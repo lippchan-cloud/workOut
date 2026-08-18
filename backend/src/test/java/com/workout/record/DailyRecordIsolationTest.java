@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.workout.support.TestUsernames;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,8 +31,8 @@ class DailyRecordIsolationTest {
 
     @Test
     void userBMustNotSeeUserARecordsOnSameDate() throws Exception {
-        AuthUser userA = register("iso_a", "secret12");
-        AuthUser userB = register("iso_b", "secret12");
+        AuthUser userA = register(TestUsernames.unique("iso_a"), "secret12");
+        AuthUser userB = register(TestUsernames.unique("iso_b"), "secret12");
         createConsume(userA.token(), "A only", "2026-08-18T07:30:00+08:00");
 
         mockMvc.perform(get("/api/v1/dailyRecords")

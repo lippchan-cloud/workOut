@@ -1,15 +1,19 @@
+# 集成测试直连 SQLPub MySQL（与主配置同一实例），不再使用 H2。
+# 测试会向 user / daily_record / profile 写入数据；用例通过 UUID 后缀用户名降低冲突。
+# Flyway 仅执行尚未记录的迁移（现有 V1__init.sql），不改动库中其它业务表。
 spring:
   datasource:
-    url: jdbc:h2:mem:workout;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    url: ${WORKOUT_DB_URL:jdbc:mysql://mysql5.sqlpub.com:3310/inv_doc?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${WORKOUT_DB_USER:user_lipp}
+    password: ${WORKOUT_DB_PASSWORD:pgGSlfNr1pSJbcq1}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: validate
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
+        jdbc:
+          time_zone: Asia/Shanghai
   flyway:
     enabled: true
 

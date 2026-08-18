@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.workout.support.TestUsernames;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,22 +28,24 @@ class AuthRegisterTest {
 
     @Test
     void registerShouldReturnToken() throws Exception {
+        String username = TestUsernames.unique("alice");
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "request",
-                                Map.of("username", "alice", "password", "secret12")))))
+                                Map.of("username", username, "password", "secret12")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.token").isString())
                 .andExpect(jsonPath("$.data.userId").isNumber())
-                .andExpect(jsonPath("$.data.username").value("alice"));
+                .andExpect(jsonPath("$.data.username").value(username));
     }
 
     @Test
     void duplicateUsernameShouldReturn400() throws Exception {
+        String username = TestUsernames.unique("bob");
         String body = objectMapper.writeValueAsString(Map.of(
-                "request", Map.of("username", "bob", "password", "secret12")));
+                "request", Map.of("username", username, "password", "secret12")));
         mockMvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk());
 
@@ -56,7 +59,8 @@ class AuthRegisterTest {
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "request", Map.of("username", "carol", "password", "123")))))
+                                "request",
+                                Map.of("username", TestUsernames.unique("carol"), "password", "123")))))
                 .andExpect(status().isBadRequest());
     }
 }

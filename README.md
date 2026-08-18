@@ -44,6 +44,8 @@ cd ../backend && mvn spring-boot:run
 
 ## 测试命令
 
+后端集成测试直连 SQLPub MySQL（见 `backend/src/test/resources/application-test.yml`，与主配置同一实例），**不再使用 H2**。测试会向 workout 相关表写入数据；用户名采用 UUID 后缀隔离。需本机可访问 `mysql5.sqlpub.com:3310`。
+
 ```bash
 cd backend && mvn test
 cd frontend && npm test
