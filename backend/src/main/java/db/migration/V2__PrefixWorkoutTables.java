@@ -1,9 +1,10 @@
 package db.migration;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
+import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Locale;
 import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
 import org.slf4j.Logger;
@@ -43,7 +44,7 @@ public class V2__PrefixWorkoutTables extends BaseJavaMigration {
         }
         if (tableExists(connection, "user") && hasColumn(connection, "user", "password_hash")) {
             log.info("[库表前缀] rename start from=user to=work_out_user");
-            execute(connection, "RENAME TABLE `user` TO work_out_user");
+            execute(connection, "ALTER TABLE `user` RENAME TO work_out_user");
             log.info("[库表前缀] rename done table=work_out_user");
             return;
         }
@@ -73,7 +74,7 @@ public class V2__PrefixWorkoutTables extends BaseJavaMigration {
         }
         if (tableExists(connection, "daily_record") && hasColumn(connection, "daily_record", "user_id")) {
             log.info("[库表前缀] rename start from=daily_record to=work_out_daily_record");
-            execute(connection, "RENAME TABLE daily_record TO work_out_daily_record");
+            execute(connection, "ALTER TABLE daily_record RENAME TO work_out_daily_record");
             log.info("[库表前缀] rename done table=work_out_daily_record");
             return;
         }
@@ -109,7 +110,7 @@ public class V2__PrefixWorkoutTables extends BaseJavaMigration {
         }
         if (tableExists(connection, "profile") && hasColumn(connection, "profile", "user_id")) {
             log.info("[库表前缀] rename start from=profile to=work_out_profile");
-            execute(connection, "RENAME TABLE profile TO work_out_profile");
+            execute(connection, "ALTER TABLE profile RENAME TO work_out_profile");
             log.info("[库表前缀] rename done table=work_out_profile");
             return;
         }
@@ -133,32 +134,52 @@ public class V2__PrefixWorkoutTables extends BaseJavaMigration {
     }
 
     /**
-     * 判断当前库是否已有指定表。
+     * 判断当前库是否已有指定表（JDBC DatabaseMetaData，兼容 MySQL 与 H2）。
      */
     private boolean tableExists(Connection connection, String tableName) throws Exception {
-        String sql =
-                "SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? LIMIT 1";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, tableName);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
+        DatabaseMetaData meta = connection.getMetaData();
+        String catalog = connection.getCatalog();
+        for (String candidate : nameCandidates(tableName)) {
+            try (ResultSet rs = meta.getTables(catalog, null, candidate, new String[] {"TABLE"})) {
+                if (rs.next()) {
+                    return true;
+                }
             }
         }
+        return false;
     }
 
     /**
      * 判断旧表是否带有本项目特征列，避免误改共享库其它同名表。
      */
     private boolean hasColumn(Connection connection, String tableName, String columnName) throws Exception {
-        String sql =
-                "SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ? LIMIT 1";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, tableName);
-            ps.setString(2, columnName);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
+        DatabaseMetaData meta = connection.getMetaData();
+        String catalog = connection.getCatalog();
+        for (String tableCandidate : nameCandidates(tableName)) {
+            for (String columnCandidate : nameCandidates(columnName)) {
+                try (ResultSet rs = meta.getColumns(catalog, null, tableCandidate, columnCandidate)) {
+                    if (rs.next()) {
+                        return true;
+                    }
+                }
             }
         }
+        return false;
+    }
+
+    /**
+     * 生成大小写候选名，兼容 H2 默认大写与 MySQL 小写标识符。
+     */
+    private String[] nameCandidates(String name) {
+        String upper = name.toUpperCase(Locale.ROOT);
+        String lower = name.toLowerCase(Locale.ROOT);
+        if (name.equals(upper)) {
+            return new String[] {name, lower};
+        }
+        if (name.equals(lower)) {
+            return new String[] {name, upper};
+        }
+        return new String[] {name, lower, upper};
     }
 
     /**

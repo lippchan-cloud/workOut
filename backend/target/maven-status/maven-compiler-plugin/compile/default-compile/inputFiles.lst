@@ -45,6 +45,7 @@
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/record/api/package-info.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/record/application/DailyRecordService.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/record/application/package-info.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/record/domain/RecordQueryPeriod.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/record/domain/RecordType.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/record/domain/package-info.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/modules/record/infrastructure/DailyRecordEntity.java

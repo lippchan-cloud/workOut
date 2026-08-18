@@ -594,3 +594,22 @@
 - 未执行 `git commit` / `git push`；不纳入 `backend/target/**`
 - 勾选：tasks.md 3.3
 
+
+
+---
+
+## §Docker — docker profile 内嵌 H2 可启动
+
+- 对应：Docker 单镜像交付（application-docker.yml + V2 可移植元数据）
+- 测试类：`backend/src/test/java/com/workout/docker/DockerProfileBootstrapTest.java`
+
+### RED
+
+- 命令：`cd backend && mvn -q test -Dtest=DockerProfileBootstrapTest`
+- 结果：**ERROR** — ApplicationContext 失败：`Driver com.mysql.cj.jdbc.Driver claims to not accept jdbcUrl, jdbc:h2:...`
+
+### GREEN
+
+- 实现：H2 依赖、`application-docker.yml`、V2 改用 DatabaseMetaData + `ALTER TABLE ... RENAME TO`；Dockerfile 多阶段构建
+- 命令：同上
+- 结果：**PASS** — Tests run: 1, Failures: 0

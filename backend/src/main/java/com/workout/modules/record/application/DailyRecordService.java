@@ -3,15 +3,20 @@ package com.workout.modules.record.application;
 import com.workout.common.BusinessException;
 import com.workout.modules.record.api.CreateDailyRecordRequest;
 import com.workout.modules.record.api.DailyRecordResponse;
+import com.workout.modules.record.domain.RecordQueryPeriod;
 import com.workout.modules.record.domain.RecordType;
 import com.workout.modules.record.infrastructure.DailyRecordEntity;
 import com.workout.modules.record.infrastructure.DailyRecordRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -19,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 日记录应用服务（应用层）。
- * 负责创建与按日查询；一律使用 JWT 中的 userId，禁止信任客户端身份字段。
+ * 负责创建、按日/月/区间查询与导出；一律使用 JWT 中的 userId，禁止信任客户端身份字段。
  */
 @Service
 public class DailyRecordService {
@@ -82,6 +87,117 @@ public class DailyRecordService {
     }
 
     /**
+     * 解析互斥查询参数为上海时区区间：恰好一种模式；from 不得晚于 to；闭区间跨度不得超过 366 天。
+     *
+     * @param date      单日 YYYY-MM-DD，可空
+     * @param yearMonth 整月 YYYY-MM，可空
+     * @param from      区间起（含），可空
+     * @param to        区间止（含），可空
+     * @return 解析后的查询区间
+     */
+    public RecordQueryPeriod resolvePeriod(LocalDate date, YearMonth yearMonth, LocalDate from, LocalDate to) {
+        // 关键入口：筛选键，不含 token
+        log.info(
+                "[日记录] resolvePeriod start date={}, yearMonth={}, from={}, to={}",
+                date,
+                yearMonth,
+                from,
+                to);
+        boolean hasDate = date != null;
+        boolean hasMonth = yearMonth != null;
+        boolean hasFrom = from != null;
+        boolean hasTo = to != null;
+        int modes = (hasDate ? 1 : 0) + (hasMonth ? 1 : 0) + ((hasFrom || hasTo) ? 1 : 0);
+        if (modes != 1 || hasFrom != hasTo) {
+            log.error("[日记录] resolvePeriod failed code=400 msg=只能使用一种筛选条件");
+            throw new BusinessException("只能使用一种筛选条件");
+        }
+        RecordQueryPeriod period;
+        if (hasMonth) {
+            period = RecordQueryPeriod.month(yearMonth);
+        } else if (hasFrom) {
+            if (from.isAfter(to)) {
+                log.error("[日记录] resolvePeriod failed code=400 msg=开始日期不能晚于结束日期 from={}, to={}", from, to);
+                throw new BusinessException("开始日期不能晚于结束日期");
+            }
+            if (ChronoUnit.DAYS.between(from, to) > 365) {
+                log.error("[日记录] resolvePeriod failed code=400 msg=查询区间不能超过366天 from={}, to={}", from, to);
+                throw new BusinessException("查询区间不能超过366天");
+            }
+            period = RecordQueryPeriod.range(from, to);
+        } else {
+            period = RecordQueryPeriod.day(date);
+        }
+        log.info(
+                "[日记录] resolvePeriod done entityType=RecordQueryPeriod date={}, yearMonth={}, from={}, to={}",
+                period.getDate(),
+                period.getYearMonth(),
+                period.getFrom(),
+                period.getTo());
+        return period;
+    }
+
+    /**
+     * 按已解析区间一次查询当前用户记录，时间升序。
+     *
+     * @param userId JWT 用户主键
+     * @param period 上海时区闭开区间
+     * @return 区间内列表
+     */
+    @Transactional(readOnly = true)
+    public List<DailyRecordResponse> listByPeriod(Long userId, RecordQueryPeriod period) {
+        log.info(
+                "[日记录] listByPeriod start userId={}, date={}, yearMonth={}, from={}, to={}",
+                userId,
+                period.getDate(),
+                period.getYearMonth(),
+                period.getFrom(),
+                period.getTo());
+        // 一次按用户+区间查询，禁止按日循环查库
+        List<DailyRecordEntity> rows =
+                dailyRecordRepository
+                        .findByUserIdAndDeletedFalseAndRecordedAtGreaterThanEqualAndRecordedAtLessThanOrderByRecordedAtAscIdAsc(
+                                userId, period.startInclusive(), period.endExclusive());
+        List<Long> sampleIds = rows.stream().limit(20).map(DailyRecordEntity::getId).toList();
+        log.info(
+                "[日记录] listByPeriod loaded entityType=DailyRecordEntity size={}, sampleIds={}",
+                rows.size(),
+                sampleIds);
+        return rows.stream().map(DailyRecordResponse::from).toList();
+    }
+
+    /**
+     * 将列表结果组装为接口 data（单日带 date；月/区间带 from/to）。
+     *
+     * @param period 已解析区间
+     * @param list   查询结果
+     * @return 列表接口 data
+     */
+    public Map<String, Object> toListData(RecordQueryPeriod period, List<DailyRecordResponse> list) {
+        log.info(
+                "[日记录] toListData start date={}, yearMonth={}, from={}, to={}, size={}",
+                period.getDate(),
+                period.getYearMonth(),
+                period.getFrom(),
+                period.getTo(),
+                list.size());
+        Map<String, Object> data = new LinkedHashMap<>();
+        if (period.getDate() != null) {
+            data.put("date", period.getDate().toString());
+        }
+        if (period.getYearMonth() != null) {
+            data.put("yearMonth", period.getYearMonth().toString());
+        }
+        if (period.getDate() == null) {
+            data.put("from", period.getFrom().toString());
+            data.put("to", period.getTo().toString());
+        }
+        data.put("list", list);
+        log.info("[日记录] toListData done size={}", list.size());
+        return data;
+    }
+
+    /**
      * 按上海时区自然日查询当前用户记录，时间升序。
      *
      * @param userId JWT 用户主键
@@ -91,15 +207,11 @@ public class DailyRecordService {
     @Transactional(readOnly = true)
     public List<DailyRecordResponse> listByDate(Long userId, LocalDate date) {
         log.info("[日记录] listByDate start userId={}, date={}", userId, date);
-        Instant start = date.atStartOfDay(SHANGHAI).toInstant();
-        Instant end = date.plusDays(1).atStartOfDay(SHANGHAI).toInstant();
-        // 一次按用户+区间查询，禁止循环查库
-        List<DailyRecordEntity> rows =
-                dailyRecordRepository
-                        .findByUserIdAndDeletedFalseAndRecordedAtGreaterThanEqualAndRecordedAtLessThanOrderByRecordedAtAscIdAsc(
-                                userId, start, end);
-        log.info("[日记录] listByDate done userId={}, date={}, size={}", userId, date, rows.size());
-        return rows.stream().map(DailyRecordResponse::from).toList();
+        // 单日走统一区间解析，避免两套时区算法
+        RecordQueryPeriod period = resolvePeriod(date, null, null, null);
+        List<DailyRecordResponse> list = listByPeriod(userId, period);
+        log.info("[日记录] listByDate done userId={}, date={}, size={}", userId, date, list.size());
+        return list;
     }
 
     /**

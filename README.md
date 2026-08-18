@@ -33,14 +33,33 @@ cd frontend && npm install && npm run build:static
 cd ../backend && mvn spring-boot:run
 ```
 
+### Docker（推荐给「只想打开浏览器用」）
+
+单镜像内嵌 H2，无需外部 MySQL：
+
+```bash
+docker build -t workout:local .
+docker run --rm -p 8080:8080 workout:local
+# 浏览器打开 http://localhost:8080
+```
+
+可选 Compose（数据目录挂载到 `./data`）：
+
+```bash
+docker compose up --build
+```
+
+镜像默认 `SPRING_PROFILES_ACTIVE=docker`。可选环境变量：`WORKOUT_JWT_SECRET`、`WORKOUT_H2_PATH`（默认 `/data/workout`）。本地开发仍可用下方 MySQL 默认配置（不激活 docker profile）。
+
 数据库连接与 JWT 默认值已写入 `backend/src/main/resources/application.yml`（私有仓）。不设环境变量即可启动；下列变量仅为可选覆盖：
 
 | 变量 | 说明 |
 | --- | --- |
-| `WORKOUT_DB_URL` | 可选，覆盖 JDBC URL |
-| `WORKOUT_DB_USER` | 可选，覆盖数据库用户 |
-| `WORKOUT_DB_PASSWORD` | 可选，覆盖数据库密码 |
+| `WORKOUT_DB_URL` | 可选，覆盖 JDBC URL（非 docker profile） |
+| `WORKOUT_DB_USER` | 可选，覆盖数据库用户（非 docker profile） |
+| `WORKOUT_DB_PASSWORD` | 可选，覆盖数据库密码（非 docker profile） |
 | `WORKOUT_JWT_SECRET` | 可选，覆盖 JWT HMAC 密钥 |
+| `WORKOUT_H2_PATH` | docker profile 下 H2 文件路径（默认 `/data/workout`） |
 
 ## 测试命令
 

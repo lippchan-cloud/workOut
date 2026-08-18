@@ -1,0 +1,10 @@
+# 可选：与 `docker run` 等价的一键启动（内嵌 H2）
+services:
+  workout:
+    build: .
+    image: workout:local
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      WORKOUT_H2_PATH: /data/workout

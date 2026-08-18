@@ -5,11 +5,13 @@ import com.workout.common.ApiResponse;
 import com.workout.modules.auth.api.CurrentUser;
 import com.workout.modules.auth.domain.AuthPrincipal;
 import com.workout.modules.record.application.DailyRecordService;
+import com.workout.modules.record.domain.RecordQueryPeriod;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -60,21 +62,32 @@ public class DailyRecordController {
     }
 
     /**
-     * 按日查询当前用户记录列表。
+     * 按单日 / 整月 / 自定义区间查询当前用户记录列表。参数互斥由应用服务解析。
      */
     @GetMapping
-    public ApiResponse<Map<String, Object>> listByDate(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    public ApiResponse<Map<String, Object>> list(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth yearMonth,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         AuthPrincipal principal = CurrentUser.require();
-        log.info("[日记录] DailyRecordController.listByDate start userId={}, date={}", principal.getUserId(), date);
-        // 按用户隔离查询当日列表
-        List<DailyRecordResponse> list = dailyRecordService.listByDate(principal.getUserId(), date);
         log.info(
-                "[日记录] DailyRecordController.listByDate done userId={}, date={}, size={}",
+                "[日记录] DailyRecordController.list start userId={}, date={}, yearMonth={}, from={}, to={}",
                 principal.getUserId(),
                 date,
+                yearMonth,
+                from,
+                to);
+        // 解析筛选区间后再一次仓储查询，身份只取 JWT
+        RecordQueryPeriod period = dailyRecordService.resolvePeriod(date, yearMonth, from, to);
+        List<DailyRecordResponse> list = dailyRecordService.listByPeriod(principal.getUserId(), period);
+        log.info(
+                "[日记录] DailyRecordController.list done userId={}, from={}, to={}, size={}",
+                principal.getUserId(),
+                period.getFrom(),
+                period.getTo(),
                 list.size());
-        return ApiResponse.ok(Map.of("date", date.toString(), "list", list));
+        return ApiResponse.ok(dailyRecordService.toListData(period, list));
     }
 
     /**
