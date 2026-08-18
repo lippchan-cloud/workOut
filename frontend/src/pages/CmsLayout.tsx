@@ -6,6 +6,8 @@ const NAV = [
   { to: "/cms/accounts", label: "账户列表", end: true },
   { to: "/cms/users", label: "用户详情", end: false },
   { to: "/cms/reports", label: "报告", end: true },
+  { to: "/cms/api-keys", label: "API Key", end: true },
+  { to: "/cms/ai-calls", label: "AI 调用", end: true },
 ] as const;
 
 /**
@@ -40,7 +42,7 @@ export function CmsLayout() {
         <div>
           <p className="page__eyebrow">CMS</p>
           <h1>后台管理</h1>
-          <p className="page__subtitle">运营只读：账户、用户详情与已有分享报告。</p>
+          <p className="page__subtitle">运营：账户、用户详情、分享报告、API Key 与 AI 调用。</p>
         </div>
         <Link to="/">返回</Link>
       </header>

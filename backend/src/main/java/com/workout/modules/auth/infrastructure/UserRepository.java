@@ -1,5 +1,7 @@
 package com.workout.modules.auth.infrastructure;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -16,6 +18,11 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @return 用户实体（可能为空）
      */
     Optional<UserEntity> findByUsername(String username);
+
+    /**
+     * 批量按用户名加载（种子赋 key 等），禁止循环 findByUsername。
+     */
+    List<UserEntity> findByUsernameIn(Collection<String> usernames);
 
     /**
      * 判断用户名是否已注册。

@@ -20,7 +20,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * CMS 账户列表不再公开放行，须 authenticated + 业务层 ADMIN 校验。
  */
 @Configuration
-@EnableConfigurationProperties({JwtProperties.class, AdminProperties.class, WorkoutPublicProperties.class})
+@EnableConfigurationProperties({
+    JwtProperties.class,
+    AdminProperties.class,
+    WorkoutPublicProperties.class,
+    WorkoutAiProperties.class
+})
 public class SecurityConfig {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);

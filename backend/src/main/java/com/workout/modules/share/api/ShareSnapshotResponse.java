@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * 公开报告快照（API 边界 DTO）。
- * advice 预留建议分析，现阶段为空。
+ * advice / adviceStatus 由异步 AI 任务填充。
  */
 public class ShareSnapshotResponse {
 
@@ -16,6 +16,7 @@ public class ShareSnapshotResponse {
     private List<ShareRecordItem> records;
     private List<ShareBodyPoint> bodyHistory;
     private String advice;
+    private String adviceStatus;
 
     /**
      * 区间起日。
@@ -88,7 +89,7 @@ public class ShareSnapshotResponse {
     }
 
     /**
-     * 建议分析（空占位）。
+     * 建议分析文本。
      */
     public String getAdvice() {
         return advice;
@@ -99,6 +100,20 @@ public class ShareSnapshotResponse {
      */
     public void setAdvice(String advice) {
         this.advice = advice;
+    }
+
+    /**
+     * 建议状态。
+     */
+    public String getAdviceStatus() {
+        return adviceStatus;
+    }
+
+    /**
+     * 设置建议状态。
+     */
+    public void setAdviceStatus(String adviceStatus) {
+        this.adviceStatus = adviceStatus;
     }
 
     /**

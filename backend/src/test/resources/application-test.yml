@@ -30,3 +30,10 @@ workout:
   admin:
     usernames: ""
   public-base-url: http://localhost:8080
+  ai:
+    async:
+      sync: true
+    deepseek:
+      stub: true
+      api-key: sk-test-fake-key-do-not-call-network
+      seed-usernames: ""

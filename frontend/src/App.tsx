@@ -11,6 +11,8 @@ import { CmsLayout } from "./pages/CmsLayout";
 import { CmsOverviewPage } from "./pages/CmsOverviewPage";
 import { CmsPage } from "./pages/CmsPage";
 import { CmsReportsPage } from "./pages/CmsReportsPage";
+import { CmsApiKeysPage } from "./pages/CmsApiKeysPage";
+import { CmsAiCallsPage } from "./pages/CmsAiCallsPage";
 import { CmsUserDetailPage, CmsUserPickPage } from "./pages/CmsUserDetailPage";
 import { ReportPage } from "./pages/ReportPage";
 import { SharePage } from "./pages/SharePage";
@@ -27,6 +29,8 @@ export default function App() {
           <Route path="users" element={<CmsUserPickPage />} />
           <Route path="users/:userId" element={<CmsUserDetailPage />} />
           <Route path="reports" element={<CmsReportsPage />} />
+          <Route path="api-keys" element={<CmsApiKeysPage />} />
+          <Route path="ai-calls" element={<CmsAiCallsPage />} />
         </Route>
         <Route path="/report/:id" element={<ReportPage />} />
         <Route

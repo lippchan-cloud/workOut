@@ -4,6 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workout.common.NotFoundException;
 import com.workout.config.WorkoutPublicProperties;
+import com.workout.modules.ai.application.ShareAdviceRequestedEvent;
+import com.workout.modules.ai.application.ShareAdviceService;
+import com.workout.modules.ai.domain.AdviceStatus;
+import com.workout.modules.ai.infrastructure.UserApiKeyRepository;
 import com.workout.modules.auth.infrastructure.UserEntity;
 import com.workout.modules.auth.infrastructure.UserRepository;
 import com.workout.modules.profile.infrastructure.ProfileEntity;
@@ -26,12 +30,13 @@ import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 分享报告应用服务（应用层）。
- * 创建时冻结快照；公开读取只按 token，不信任客户端 userId。
+ * 创建时冻结快照并异步触发建议；公开读取只按 token，不信任客户端 userId。
  */
 @Service
 public class ShareReportService {
@@ -43,11 +48,13 @@ public class ShareReportService {
     private final ProfileHistoryRepository profileHistoryRepository;
     private final UserRepository userRepository;
     private final ShareReportRepository shareReportRepository;
+    private final UserApiKeyRepository userApiKeyRepository;
     private final WorkoutPublicProperties publicProperties;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
-     * 注入记录、资料、用户与分享仓储。
+     * 注入记录、资料、用户、分享与 AI 触发依赖。
      */
     public ShareReportService(
             DailyRecordService dailyRecordService,
@@ -55,19 +62,23 @@ public class ShareReportService {
             ProfileHistoryRepository profileHistoryRepository,
             UserRepository userRepository,
             ShareReportRepository shareReportRepository,
+            UserApiKeyRepository userApiKeyRepository,
             WorkoutPublicProperties publicProperties,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ApplicationEventPublisher eventPublisher) {
         this.dailyRecordService = dailyRecordService;
         this.profileRepository = profileRepository;
         this.profileHistoryRepository = profileHistoryRepository;
         this.userRepository = userRepository;
         this.shareReportRepository = shareReportRepository;
+        this.userApiKeyRepository = userApiKeyRepository;
         this.publicProperties = publicProperties;
         this.objectMapper = objectMapper;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
-     * 按当前筛选创建只读分享；须已填身高体重。
+     * 按当前筛选创建只读分享；须已填身高体重；有 key 则 PENDING 并异步生成建议。
      */
     @Transactional
     public ShareCreateResponse create(
@@ -90,7 +101,9 @@ public class ShareReportService {
         ProfileEntity profile = profileRepository.findByUserId(userId).orElse(null);
         UserEntity user = userRepository.findById(userId).orElse(null);
         String displayName = resolveDisplayName(profile, user);
-        ShareSnapshotResponse snapshot = buildSnapshot(period, displayName, records, history);
+        boolean hasKey = userApiKeyRepository.findByUserId(userId).isPresent();
+        AdviceStatus initialStatus = hasKey ? AdviceStatus.PENDING : AdviceStatus.NONE_KEY;
+        ShareSnapshotResponse snapshot = buildSnapshot(period, displayName, records, history, initialStatus);
         String token = UUID.randomUUID().toString().replace("-", "");
         ShareReportEntity row = new ShareReportEntity();
         row.setToken(token);
@@ -98,13 +111,19 @@ public class ShareReportService {
         row.setRangeFrom(period.getFrom());
         row.setRangeTo(period.getTo());
         row.setSnapshotJson(writeJson(snapshot));
+        row.setAdviceStatus(initialStatus.name());
         row.setCreatedAt(Instant.now());
         ShareReportEntity saved = shareReportRepository.save(row);
+        if (hasKey) {
+            // 提交后异步生成，不阻塞本 HTTP
+            eventPublisher.publishEvent(new ShareAdviceRequestedEvent(token, userId));
+        }
         String url = publicProperties.getPublicBaseUrl() + "/report/" + token;
         log.info(
-                "[分享] create done entityType=ShareReportEntity id={}, userId={}, tokenPrefix={}, rows={}, elapsedMs={}",
+                "[分享] create done entityType=ShareReportEntity id={}, userId={}, adviceStatus={}, tokenPrefix={}, rows={}, elapsedMs={}",
                 saved.getId(),
                 saved.getUserId(),
+                initialStatus,
                 token.substring(0, Math.min(8, token.length())) + "...",
                 records.size(),
                 System.currentTimeMillis() - startMs);
@@ -124,12 +143,28 @@ public class ShareReportService {
                     return new NotFoundException("报告不存在");
                 });
         log.info(
-                "[分享] getPublic loaded entityType=ShareReportEntity id={}, userId={}",
+                "[分享] getPublic loaded entityType=ShareReportEntity id={}, userId={}, adviceStatus={}",
                 row.getId(),
-                row.getUserId());
+                row.getUserId(),
+                row.getAdviceStatus());
         try {
             ShareSnapshotResponse snapshot = objectMapper.readValue(row.getSnapshotJson(), ShareSnapshotResponse.class);
-            log.info("[分享] getPublic done tokenPrefix={}, from={}, to={}", token.substring(0, 8), snapshot.getFrom(), snapshot.getTo());
+            // 以列状态为准，兼容旧快照缺字段
+            String status = row.getAdviceStatus() == null ? AdviceStatus.NONE_KEY.name() : row.getAdviceStatus();
+            snapshot.setAdviceStatus(status);
+            if (AdviceStatus.NONE_KEY.name().equals(status)
+                    && (snapshot.getAdvice() == null || snapshot.getAdvice().isBlank())) {
+                snapshot.setAdvice(ShareAdviceService.MSG_NO_KEY);
+            }
+            if (AdviceStatus.PENDING.name().equals(status) && snapshot.getAdvice() == null) {
+                snapshot.setAdvice(null);
+            }
+            log.info(
+                    "[分享] getPublic done tokenPrefix={}, from={}, to={}, adviceStatus={}",
+                    token.substring(0, 8),
+                    snapshot.getFrom(),
+                    snapshot.getTo(),
+                    status);
             return snapshot;
         } catch (JsonProcessingException ex) {
             log.error("[分享] getPublic failed code=500 parseSnapshot id={}", row.getId());
@@ -148,13 +183,14 @@ public class ShareReportService {
     }
 
     /**
-     * 组装冻结快照：范围、显示名、事项、曲线点；建议为空。
+     * 组装冻结快照：范围、显示名、事项、曲线点与初始建议状态。
      */
     private ShareSnapshotResponse buildSnapshot(
             RecordQueryPeriod period,
             String displayName,
             List<DailyRecordResponse> records,
-            List<ProfileHistoryEntity> history) {
+            List<ProfileHistoryEntity> history,
+            AdviceStatus adviceStatus) {
         ShareSnapshotResponse snapshot = new ShareSnapshotResponse();
         snapshot.setFrom(period.getFrom().toString());
         snapshot.setTo(period.getTo().toString());
@@ -177,7 +213,12 @@ public class ShareReportService {
                     return point;
                 })
                 .toList());
-        snapshot.setAdvice(null);
+        snapshot.setAdviceStatus(adviceStatus.name());
+        if (adviceStatus == AdviceStatus.NONE_KEY) {
+            snapshot.setAdvice(ShareAdviceService.MSG_NO_KEY);
+        } else {
+            snapshot.setAdvice(null);
+        }
         return snapshot;
     }
 

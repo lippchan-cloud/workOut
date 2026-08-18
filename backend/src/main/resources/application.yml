@@ -34,3 +34,12 @@ workout:
     # 逗号分隔；注册或登录时提升为 ADMIN。私有仓可直接写用户名。
     usernames: ${WORKOUT_ADMIN_USERNAMES:lipp}
   public-base-url: ${WORKOUT_PUBLIC_BASE_URL:http://localhost:8080}
+  ai:
+    # 限流与上下文向量化均以 MySQL 为准，不用 Redis / 内存计数器 / 独立向量库。
+    async:
+      sync: false
+    deepseek:
+      stub: false
+      # 私有仓默认值；可用环境变量覆盖。日志与 CMS 仅打掩码。
+      api-key: ${WORKOUT_DEEPSEEK_API_KEY:}
+      seed-usernames: ${WORKOUT_DEEPSEEK_SEED_USERNAMES:demo,lipp}

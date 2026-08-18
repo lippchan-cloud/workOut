@@ -36,6 +36,9 @@ public class ShareReportEntity {
     @Column(name = "snapshot_json", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String snapshotJson;
 
+    @Column(name = "advice_status", nullable = false, length = 16)
+    private String adviceStatus;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -121,6 +124,20 @@ public class ShareReportEntity {
      */
     public void setSnapshotJson(String snapshotJson) {
         this.snapshotJson = snapshotJson;
+    }
+
+    /**
+     * 建议分析状态（NONE_KEY/PENDING/READY/FAILED）。
+     */
+    public String getAdviceStatus() {
+        return adviceStatus;
+    }
+
+    /**
+     * 设置建议状态。
+     */
+    public void setAdviceStatus(String adviceStatus) {
+        this.adviceStatus = adviceStatus;
     }
 
     /**

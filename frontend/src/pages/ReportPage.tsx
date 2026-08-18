@@ -9,6 +9,8 @@ type ReportRecord = {
   content: string;
 };
 
+type AdviceStatus = "NONE_KEY" | "PENDING" | "READY" | "FAILED" | string;
+
 type ReportPayload = {
   from: string;
   to: string;
@@ -16,10 +18,31 @@ type ReportPayload = {
   records: ReportRecord[];
   bodyHistory: BodyPoint[];
   advice: string | null;
+  adviceStatus?: AdviceStatus | null;
 };
 
 /**
- * 公开报告页：不走三 Tab 壳。上下为用户名称、事项、曲线、建议分析占位。
+ * 根据建议状态选择展示文案。
+ */
+function adviceDisplay(data: ReportPayload): string {
+  const status = data.adviceStatus ?? (data.advice ? "READY" : "NONE_KEY");
+  if (status === "PENDING") {
+    return "生成中";
+  }
+  if (status === "NONE_KEY") {
+    return data.advice?.trim() || "未配置 API Key";
+  }
+  if (status === "FAILED") {
+    return data.advice?.trim() || "建议生成失败，请稍后重试（仅供参考）";
+  }
+  if (status === "READY" && data.advice?.trim()) {
+    return data.advice;
+  }
+  return data.advice?.trim() || "建议分析（即将提供）";
+}
+
+/**
+ * 公开报告页：不走三 Tab 壳。建议分析由异步 AI 填充。
  */
 export function ReportPage() {
   const { id } = useParams();
@@ -31,15 +54,36 @@ export function ReportPage() {
       setError("报告不存在");
       return;
     }
-    fetch(`/api/v1/reports/${id}`)
-      .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok || body.code !== 200) {
-          throw new Error(body.msg || "报告不存在");
-        }
-        setData(body.data);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : "报告不存在"));
+    let cancelled = false;
+    let timer: number | undefined;
+    const load = () => {
+      fetch(`/api/v1/reports/${id}`)
+        .then(async (response) => {
+          const body = await response.json();
+          if (!response.ok || body.code !== 200) {
+            throw new Error(body.msg || "报告不存在");
+          }
+          if (cancelled) {
+            return;
+          }
+          setData(body.data);
+          if (body.data?.adviceStatus === "PENDING") {
+            timer = window.setTimeout(load, 3000);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setError(err instanceof Error ? err.message : "报告不存在");
+          }
+        });
+    };
+    load();
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+      }
+    };
   }, [id]);
 
   return (
@@ -98,7 +142,9 @@ export function ReportPage() {
             <h2 className="page__title" style={{ fontSize: "1.15rem" }}>
               建议分析
             </h2>
-            <p className="empty-state">建议分析（即将提供）</p>
+            <p className="empty-state" data-testid="advice-text">
+              {adviceDisplay(data)}
+            </p>
           </section>
         </div>
       ) : null}
