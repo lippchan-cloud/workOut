@@ -6,7 +6,7 @@
 | 文档版本 | v1.0 |
 | 分支 | `feat/init-workout-mvp` |
 | 规范 | [workOut-TDD规范.md](./workOut-TDD规范.md) |
-| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md)、[extend-calendar-month-range-csv tasks](../openspec/changes/extend-calendar-month-range-csv/tasks.md) |
+| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md)、[extend-calendar-month-range-csv tasks](../openspec/changes/extend-calendar-month-range-csv/tasks.md)、[phase-2-production-hardening tasks](../openspec/changes/phase-2-production-hardening/tasks.md) |
 
 > 规则：未写本页证据，不得勾选 `tasks.md`。
 
@@ -56,6 +56,23 @@
 | CAL-5.1 | 相关回归 | N/A | 已证 | §CAL-5.1 | 是 |
 | CAL-5.2 | openspec validate | N/A | 通过 | §CAL-5.2 | 是 |
 | CAL-5.3 | 不提交 git | N/A | 本会话未执行 commit/push | §CAL-5.3 | 是 |
+| P2-1.1 | CMS 无 Token 401 | 已证 | 已证 | §P2-1.1 | 是 |
+| P2-1.2 | USER 403 / ADMIN 200 | 已证 | 已证 | §P2-1.2 | 是 |
+| P2-2.1 | CMS 跳转登录、无免登录入口 | 已证 | 已证 | §P2-2.1 | 是 |
+| P2-2.2 | USER 拒、ADMIN 可见表 | 已证 | 已证 | §P2-2.2 | 是 |
+| P2-3.1 | 记录 PUT + 空内容 400 | 已证 | 已证 | §P2-3.1 | 是 |
+| P2-3.2 | 记录 DELETE + 跨用户 404 | 已证 | 已证 | §P2-3.2 | 是 |
+| P2-4.1 | 日历加载/失败/空态 | 已证 | 已证 | §P2-4.1 | 是 |
+| P2-4.2 | 日历改删确认 | 已证 | 已证 | §P2-4.2 | 是 |
+| P2-4.3 | 补记带日期 | 已证 | 已证 | §P2-4.3 | 是 |
+| P2-5.1 | 表单即时校验与保存去向 | 已证 | 已证 | §P2-5.1 | 是 |
+| P2-5.2 | 401 草稿/redirect | 已证 | 已证 | §P2-5.2 | 是 |
+| P2-6.1 | 改密 API | 已证 | 已证 | §P2-6.1 | 是 |
+| P2-6.2 | 注销删本人数据 | 已证 | 已证 | §P2-6.2 | 是 |
+| P2-6.3 | 我的账号区/改密/注销 | 已证 | 已证 | §P2-6.3 | 是 |
+| P2-7.1 | 相关回归 | N/A | 已证 | §P2-7.1 | 是 |
+| P2-7.2 | openspec validate | N/A | 通过 | §P2-7.2 | 是 |
+| P2-7.3 | 不提交 git | N/A | 已遵守 | §P2-7.3 | 是 |
 
 ---
 
@@ -779,4 +796,188 @@
 - 实现：`application-docker.yml` 改为与主配置相同的 MySQL；Dockerfile 去掉 `WORKOUT_H2_PATH`/H2 volume；`pom.xml` 移除 H2；compose/README 同步
 - 命令：同上
 - 结果：**PASS** — Tests run: 1, Failures: 0（JDBC `jdbc:mysql://mysql5.sqlpub.com:3310/inv_doc`，health UP）
+
+---
+
+## §P2 — phase-2-production-hardening（2026-08-18）
+
+OpenSpec：`openspec/changes/phase-2-production-hardening/`。测试库仍为 SQLPub；`application-test.yml` 将 Hikari `maximum-pool-size` 设为 3，避免打满 `max_user_connections=30`。
+
+---
+
+### Task 1.1 — CMS 无 Token 改为 401
+
+- 对应规格：`openspec/changes/phase-2-production-hardening/specs/admin-cms/spec.md` — Admin accounts require ADMIN JWT
+- 测试类：`backend/src/test/java/com/workout/admin/AdminAccountsListTest.java#listAccountsWithoutTokenShouldReturn401`
+- RED：承接 §CMS-1.2 GREEN（`GET /api/v1/admin/accounts` permitAll 返回 **200**）。改写断言为 401 后、去掉 `permitAll` 前：`Status expected:<401> but was:<200>`
+- GREEN 命令：`cd backend && mvn test -Dtest=AdminAccountsListTest`
+- GREEN 结果：**PASS** — Tests run: 6, Failures: 0（见 §P2-7.1 同一次回归）
+- 实现要点：Flyway `V3__user_role.sql`；`SecurityConfig` 公开口仅 register/login/health；CMS GET 需 JWT
+- 勾选：phase-2 tasks.md 1.1
+
+---
+
+### Task 1.2 — USER 403、引导 ADMIN 200
+
+- 对应规格：同上 + `user-auth` — bootstrap ADMIN
+- 测试：`regularUserJwtCannotListAccounts`、`bootstrapAdminJwtCanListAccountsWithProfile`
+- RED：一期无 `data.role`；USER JWT 仍可 200 拉全站账户（CMS 当时甚至无 Token 即可列）。改写后期望 403 / `role=ADMIN` 先失败
+- GREEN：同上 AdminAccountsListTest Tests run: 6, Failures: 0
+- 实现要点：`UserEntity.role`、`AuthTokenResponse.role`；`workout.admin.usernames`（生产默认 `lipp`，test 为空，用例里 `AdminProperties.setUsernames`）；注册/登录提升且登录只升不降；`AdminAccountService` 查库角色，USER 抛 `ForbiddenException`（HTTP 403）
+- 勾选：tasks.md 1.2
+
+---
+
+### Task 2.1 — 无 token 打开 /cms 跳登录；登录页无「后台管理」
+
+- 对应规格：admin-cms — SPA `/cms` 必须管理员
+- 测试文件：`frontend/src/CmsPage.test.tsx`
+- RED 命令（有效）：`cd frontend && npm test -- src/CmsPage.test.tsx` — 未登录仍停在 `/cms`；登录页仍有免登录「后台管理」（承接 CMS-2.x）。**无效 RED**：误用 `npx vitest@4` 因 jsdom 无 `localStorage` 6 测全挂，按规范不计
+- GREEN 命令：`cd frontend && npm test -- src/CmsPage.test.tsx`
+- GREEN 结果：**PASS** — 6 tests（见 §P2-7.1）
+- 实现要点：`CmsPage` 无 token → `/login?redirect=/cms`；`LoginPage` 去掉免登录 CMS 链接
+- 勾选：tasks.md 2.1
+
+---
+
+### Task 2.2 — USER 拒看表、ADMIN 可见列且无 passwordHash
+
+- 测试：`regular user sees denial` / `admin can open CMS columns without passwordHash`
+- RED：无 `workout_role` 时 USER 仍拉账户表
+- GREEN：同上 CmsPage 6 tests
+- 实现要点：`AuthContext.setSession(token, role)` 存 `workout_role`；USER 文案「你不是管理员」且不渲染表；ADMIN 可见列名
+- 勾选：tasks.md 2.2
+
+---
+
+### Task 3.1 — 所有者 PUT；空内容 400「请填写内容」
+
+- 对应规格：`daily-record` PUT
+- 测试类：`backend/src/test/java/com/workout/record/DailyRecordUpdateDeleteTest.java`
+- RED 命令：`cd backend && mvn test -Dtest=DailyRecordUpdateDeleteTest`
+- RED 结果：**FAIL** — Tests run: 4, Failures: 3。`ownerCanUpdateConsumeContent` / `emptyContentOnUpdateShouldReturn400`：`Status expected:<200>/<400> but was:<404>`（无 PUT 路由）
+- GREEN 命令：同上
+- GREEN 结果：**PASS** — Tests run: 4, Failures: 0
+- 实现要点：`PUT /api/v1/dailyRecords/{id}`；身份只取 JWT；`findByIdAndUserIdAndDeletedFalse` 一次查询
+- 勾选：tasks.md 3.1
+
+---
+
+### Task 3.2 — 所有者 DELETE；跨用户 404
+
+- RED：同 3.1 命令，`ownerCanDeleteRecordThenListOmitsIt` expected 200 was 404（无 DELETE 路由）；跨用户用例在路由补齐后才绿
+- GREEN：Tests run: 4, Failures: 0
+- 实现要点：`DELETE` 逻辑删除；跨用户同一查询 404，原记录仍在；禁止 N+1
+- 勾选：tasks.md 3.2
+
+---
+
+### Task 4.1 — 日历加载 / 失败 / 空态分开
+
+- 对应规格：`calendar-view`
+- 测试文件：`frontend/src/CalendarPage.test.tsx`（loading / failure+retry / 真正空态）
+- RED：旧实现 `catch(() => setList([]))`，失败与空列表同文案「这一天还没有记录」
+- GREEN 命令：`cd frontend && npm test -- src/CalendarPage.test.tsx`
+- GREEN 结果：**PASS** — 12 tests
+- 实现要点：`loading | success | error` 三态；失败可重试；空态仅 success 且 list 空
+- 勾选：tasks.md 4.1
+
+---
+
+### Task 4.2 — 列表编辑/删除二次确认
+
+- RED：列表项无编辑/删除；删除不调 API
+- GREEN：同上 CalendarPage 12 tests（含确认后 DELETE、编辑进表单回填）
+- 实现要点：每条「编辑」「删除」；`window.confirm` 后 `DELETE /api/v1/dailyRecords/{id}`；编辑进 `/record/...` 带回内容
+- 勾选：tasks.md 4.2
+
+---
+
+### Task 4.3 — 「补记」带 date 直达表单
+
+- RED：只能从首页大按钮走完类型选择
+- GREEN：同上；补记进入带 `date=YYYY-MM-DD` 的消耗表单，datetime 使用该日
+- 实现要点：日历选中日「补记」→ `/record?date=...`
+- 勾选：tasks.md 4.3
+
+---
+
+### Task 5.1 — 即时校验与保存去向
+
+- 测试文件：`frontend/src/RecordPage.test.tsx`
+- RED：空内容仍发创建请求；保存成功无「再记一条 / 回日历」
+- GREEN 命令：`cd frontend && npm test -- src/RecordPage.test.tsx`
+- GREEN 结果：**PASS** — 10 tests
+- 实现要点：必填/长度即时校验；成功后两个去向按钮；首页大按钮入口仍在
+- 勾选：tasks.md 5.1
+
+---
+
+### Task 5.2 — 401 回登录并恢复草稿
+
+- RED：401 只跳登录，草稿丢失
+- GREEN：同上 RecordPage；`sessionStorage` 键 `workout_record_draft`；redirect 带回 pathname+search
+- 勾选：tasks.md 5.2
+
+---
+
+### Task 6.1 — 改密 API
+
+- 对应规格：`user-auth` 改密
+- 测试类：`backend/src/test/java/com/workout/auth/ChangePasswordTest.java`
+- RED：无 `PUT /api/v1/auth/password` 路由，断言 200/400 得 404
+- GREEN 命令：`cd backend && mvn test -Dtest=ChangePasswordTest`
+- GREEN 结果：**PASS** — Tests run: 2, Failures: 0（新密可登录、旧密失败；错误当前密码 400「当前密码不正确」）
+- 实现要点：JWT 身份；校验当前密码后 BCrypt 更新
+- 勾选：tasks.md 6.1
+
+---
+
+### Task 6.2 — 注销删本人数据
+
+- 测试类：`backend/src/test/java/com/workout/auth/DeleteAccountTest.java`
+- RED：无 `DELETE /api/v1/auth/me`
+- GREEN：**PASS** — Tests run: 1, Failures: 0（注销后无法登录；记录/资料不可再查）
+- 实现要点：`dailyRecordRepository.deleteByUserId` + `profileRepository.deleteByUserId` 批量删再删用户，禁止 N+1
+- 勾选：tasks.md 6.2
+
+---
+
+### Task 6.3 — 「我的」账号区与身体数据分开
+
+- 测试文件：`frontend/src/ProfilePage.test.tsx`
+- RED：无改密控件；注销无确认
+- GREEN 命令：`cd frontend && npm test -- src/ProfilePage.test.tsx`
+- GREEN 结果：**PASS** — 4 tests
+- 实现要点：账号区（改密/退出/注销）与身体数据分区；注销 `confirm` 后调删除 API 并清 token；ADMIN 可见「后台管理」链接
+- 勾选：tasks.md 6.3
+
+---
+
+### Task 7.1 — 相关回归（本会话复跑）
+
+- 命令：`cd backend && mvn test -Dtest=AdminAccountsListTest,DailyRecordUpdateDeleteTest,ChangePasswordTest,DeleteAccountTest,JwtAuthFilterTest,AuthLoginTest,AuthRegisterTest,DailyRecordCreateTest,DailyRecordIsolationTest,ProfileUpsertTest,FlywayMigrationTest`
+- 结果：**PASS** — Tests run: 31, Failures: 0, Errors: 0, `BUILD SUCCESS`
+  - Flyway 1；Create 3；Isolation 2；UpdateDelete 4；ChangePassword 2；DeleteAccount 1；Login 3；JwtFilter 3；Register 3；Admin 6；Profile 3
+- 命令：`cd frontend && npm test -- src/CmsPage.test.tsx src/CalendarPage.test.tsx src/RecordPage.test.tsx src/ProfilePage.test.tsx`
+- 结果：**PASS** — Tests 32 passed (32)
+- 命令：`cd frontend && npm test`
+- 结果：**PASS** — Test Files 11 passed；Tests 47 passed (47)
+- 未跑全量 `mvn test`（含 `DockerProfileBootstrapTest` 会再开一套 docker 上下文，易打满 SQLPub 连接）
+- 勾选：tasks.md 7.1
+
+---
+
+### Task 7.2 — openspec validate
+
+- 命令：`openspec validate phase-2-production-hardening --type change`
+- 结果：`Change 'phase-2-production-hardening' is valid`
+- 勾选：tasks.md 7.2
+
+---
+
+### Task 7.3 — 不提交 git
+
+- 本实现会话未执行 `git commit` / `git push`；未拆 dev/stage/prod；DB/JWT 仍留现有 yml；`application-test.yml` 仅加小连接池，非多环境
+- 勾选：tasks.md 7.3
 
