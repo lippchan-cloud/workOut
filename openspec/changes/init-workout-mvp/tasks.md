@@ -66,5 +66,5 @@
 
 ## 9. 建议提交节奏（实现阶段）
 
-- [ ] 9.1 每完成一组 TDD（如 2.1–2.3）单独 commit，message 使用 conventional commits（`feat:` / `test:`）
+- [x] 9.1 每完成一组 TDD（如 2.1–2.3）单独 commit，message 使用 conventional commits（`feat:` / `test:`）
 - [x] 9.2 不在未确认前 push；不把密钥写入仓库
