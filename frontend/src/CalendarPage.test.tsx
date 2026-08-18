@@ -369,4 +369,23 @@ describe("CalendarPage", () => {
     expect(await screen.findByTestId("location")).toHaveTextContent("/profile/body");
     expect(fetchMock.mock.calls.every((call) => !String(call[0]).includes("exportCsv"))).toBe(true);
   });
+
+  it("intercepts share when height or weight is missing", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (String(url).includes("/api/v1/profile")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ code: 200, data: { nickname: "半", heightCm: null, weightKg: 70 } }),
+        };
+      }
+      return emptyListResponse();
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderCalendar();
+    await user.click(await screen.findByRole("button", { name: "分享" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent("/profile/body");
+    expect(fetchMock.mock.calls.every((call) => !String(call[0]).includes("shareReports"))).toBe(true);
+  });
 });

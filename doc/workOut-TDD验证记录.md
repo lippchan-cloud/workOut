@@ -6,7 +6,7 @@
 | 文档版本 | v1.0 |
 | 分支 | `feat/init-workout-mvp` |
 | 规范 | [workOut-TDD规范.md](./workOut-TDD规范.md) |
-| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md)、[extend-calendar-month-range-csv tasks](../openspec/changes/extend-calendar-month-range-csv/tasks.md)、[phase-2-production-hardening tasks](../openspec/changes/phase-2-production-hardening/tasks.md)、[phase-3-ui-hierarchy tasks](../openspec/changes/phase-3-ui-hierarchy/tasks.md)、[phase-4-month-csv-body-history-curves tasks](../openspec/changes/phase-4-month-csv-body-history-curves/tasks.md) |
+| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md)、[extend-calendar-month-range-csv tasks](../openspec/changes/extend-calendar-month-range-csv/tasks.md)、[phase-2-production-hardening tasks](../openspec/changes/phase-2-production-hardening/tasks.md)、[phase-3-ui-hierarchy tasks](../openspec/changes/phase-3-ui-hierarchy/tasks.md)、[phase-4-month-csv-body-history-curves tasks](../openspec/changes/phase-4-month-csv-body-history-curves/tasks.md)、[phase-5-share-report-curve-xlsx tasks](../openspec/changes/phase-5-share-report-curve-xlsx/tasks.md) |
 
 > 规则：未写本页证据，不得勾选 `tasks.md`。
 
@@ -97,6 +97,22 @@
 | P4-6.1 | 相关回归 | N/A | 已证 | §P4-6.1 | 是 |
 | P4-6.2 | openspec validate | N/A | 通过 | §P4-6.2 | 是 |
 | P4-6.3 | 不提交 git | N/A | 已遵守 | §P4-6.3 | 是 |
+| P5-1.1 | 资料真实日期 changedAt | 已证 | 已证 | §P5-1.1 | 是 |
+| P5-2.1 | 导出缺身高体重 400 | 已证 | 已证 | §P5-2.1 | 是 |
+| P5-2.2 | 导出 xlsx 双 sheet | 已证 | 已证 | §P5-2.2 | 是 |
+| P5-3.1 | Flyway V5 分享表 | 已证 | 已证 | §P5-3.1 | 是 |
+| P5-3.2 | 创建分享 token+url | 已证 | 已证 | §P5-3.2 | 是 |
+| P5-3.3 | 公开 GET 报告 | 已证 | 已证 | §P5-3.3 | 是 |
+| P5-3.4 | 注销删分享 / SPA /report | 既有注销 + 新测 | 已证 | §P5-3.4 | 是 |
+| P5-4.1 | 资料页日期+曲线 | 已证 | 已证 | §P5-4.x | 是 |
+| P5-4.2 | 曲线单位与粒度 zoom | 已证 | 已证 | §P5-4.x | 是 |
+| P5-4.3 | 日历去掉曲线主路径 | 已证 | 已证 | §P5-4.x | 是 |
+| P5-5.1 | 导出/分享闸门 | 已证 | 已证 | §P5-5.1 | 是 |
+| P5-5.2 | 公开报告页布局 | 已证 | 已证 | §P5-5.2 | 是 |
+| P5-6.x | 文档与 main specs | N/A | 已写 | §P5-6.x | 是 |
+| P5-7.1 | 相关回归 | N/A | 已证 | §P5-7.1 | 是 |
+| P5-7.2 | openspec validate | N/A | 通过 | §P5-7.2 | 是 |
+| P5-7.3 | 不提交 git | N/A | 已遵守 | §P5-7.3 | 是 |
 
 ---
 
@@ -1189,5 +1205,173 @@ OpenSpec：`openspec/changes/phase-3-ui-hierarchy/`。未 commit。
 
 - 本实现会话未执行 `git commit` / `git push`
 - 勾选：tasks.md 6.3
+
+---
+
+## §P5-1.1 — 资料真实日期写入 changedAt
+
+- 对应规格：`body-history` — Profile changes are stored as history snapshots；Scenario: Client supplied changedAt is stored
+- 测试类：`backend/src/test/java/com/workout/profile/ProfileHistoryTrendsTest.java` → `putWithClientChangedAtShouldStoreThatInstantOnHistory`
+
+### RED
+
+- 命令：`cd backend && mvn test -Dtest=ProfileHistoryTrendsTest#putWithClientChangedAtShouldStoreThatInstantOnHistory`
+- 结果：**FAIL** — 历史 `changedAt` 为服务器 now，不是客户端 `2026-08-01T08:00:00+08:00`（同瞬间 `2026-08-01T00:00:00Z`）
+
+### GREEN
+
+- 实现：`ProfileRequest.changedAt`；`ProfileService.upsert` 用客户端时间写 history 与 `updatedAt`（缺省 now）
+- 命令：`cd backend && mvn -q test -Dtest=ProfileHistoryTrendsTest`
+- 结果：**PASS** — exit 0（6 tests，含本方法）
+- 勾选：tasks.md 1.1
+
+## §P5-2.1 — 导出缺身高体重 400
+
+- 对应规格：`daily-record` — Export requires current height and weight
+- 测试类：`CsvExportTest#exportWithoutHeightOrWeightShouldReturn400`、`exportWithWeightOnlyShouldReturn400`
+
+### RED
+
+- 命令：`cd backend && mvn test -Dtest=CsvExportTest#exportWithoutHeightOrWeightShouldReturn400`
+- 结果：**FAIL** — 无资料仍 200 返回文件，未 400「请先填写身高和体重」
+
+### GREEN
+
+- 实现：`DailyRecordService.requireCompleteBody`，导出前校验当前 profile
+- 命令：`cd backend && mvn -q test -Dtest=CsvExportTest`
+- 结果：**PASS** — exit 0（14 tests）
+- 勾选：tasks.md 2.1
+
+## §P5-2.2 — 导出 xlsx 双工作表
+
+- 对应规格：`daily-record` — CSV export includes point-in-time body columns（xlsx 双 sheet）
+- 测试类：`CsvExportTest#exportEmptyDayShouldBeXlsxWithTwoSheets`；对齐测 `exportRowsShouldAlignHeightToHistoryAtRecordedAt`
+
+### RED
+
+- 命令：`cd backend && mvn test -Dtest=CsvExportTest#exportEmptyDayShouldBeXlsxWithTwoSheets`
+- 结果：**FAIL** — 仍为 text/csv，无「事项列表」「成长曲线」sheet
+
+### GREEN
+
+- 实现：Apache POI `poi-ooxml`、`XlsxExportWriter`；MIME OpenXML spreadsheet；文件名 `.xlsx`
+- 命令：同 §P5-2.1
+- 结果：**PASS** — 双 sheet + 事项列表 recordedAt 对齐仍成立
+- 勾选：tasks.md 2.2
+
+## §P5-3.1 — Flyway V5 分享表
+
+- 对应：脚手架，非行为 TDD
+- 测试类：`FlywayMigrationTest` 断言含 `work_out_share_report`
+
+### RED
+
+- 命令：`cd backend && mvn test -Dtest=FlywayMigrationTest`
+- 结果：**FAIL** — tables 不含 `work_out_share_report`
+
+### GREEN
+
+- 实现：`V5__share_report.sql`
+- 命令：同上
+- 结果：**PASS** — exit 0（1 test）
+- 勾选：tasks.md 3.1
+
+## §P5-3.2 / 3.3 — 创建分享与公开报告
+
+- 对应规格：`share-report`
+- 测试类：`ShareReportTest`（create token/url、缺身高 400、无 JWT 401、匿名 GET、未知 404）
+
+### RED
+
+- 命令：`cd backend && mvn test -Dtest=ShareReportTest`
+- 结果：**FAIL** — `POST /api/v1/shareReports` 与 `GET /api/v1/reports/{id}` 404（路由不存在）
+
+### GREEN
+
+- 实现：`modules.share.*`；`WORKOUT_PUBLIC_BASE_URL`；公开 GET permitAll；快照一次加载
+- 命令：同上
+- 结果：**PASS** — exit 0（5 tests）
+- 勾选：tasks.md 3.2、3.3
+
+## §P5-3.4 — 注销删分享与 SPA `/report/**`
+
+- `AuthService` 注销路径调用 `shareReportRepository.deleteByUserId`
+- `SpaHostingTest#reportDeepLinkShouldForwardToSpa` GREEN（随 `SpaHostingTest` 6 tests，`mvn -q test -Dtest=SpaHostingTest` 本会话回归 exit 0）
+- 勾选：tasks.md 3.4
+
+## §P5-4.x — 曲线迁到资料页 + pan/zoom
+
+- 对应规格：`user-profile` / `body-history` / `calendar-view`
+- 测试文件：`frontend/src/ProfilePage.test.tsx`、`CalendarPage.test.tsx`
+
+### RED
+
+- 命令：`cd frontend && npm test -- src/ProfilePage.test.tsx src/CalendarPage.test.tsx`
+- 结果：**FAIL** — 找不到「资料真实日期」/ PUT 无 `changedAt`；找不到 `cm` 与粒度切换；日历仍有「变化曲线」按钮
+
+### GREEN
+
+- 实现：`ProfileBodyPage` datetime-local；`GrowthCurve` 单位/时间轴/pan/`data-precision`；日历去掉曲线入口；`/calendar/trends` → `/profile/body`
+- 命令：`cd frontend && npm test`
+- 结果：**PASS** — Test Files 12 passed；Tests 66 passed
+- 勾选：tasks.md 4.1–4.3
+
+## §P5-5.1 — 导出/分享闸门
+
+- 对应规格：`daily-record` / `calendar-view` 身高体重拦截
+- 测试：`CalendarPage` intercepts export / share；`CsvExportClick` 已填资料可下载（`.xlsx` 文件名由 `csvFilename()`）
+
+### RED
+
+- 导出拦截随日历改测先红（仍走 download）；分享拦截与导出共用 `requireBodyOrRedirect`
+- 本会话补测 `intercepts share when height or weight is missing`（行为已实现，该断言直接 GREEN）
+
+### GREEN
+
+- 命令：`cd frontend && npm test -- src/CalendarPage.test.tsx src/CsvExportClick.test.tsx`
+- 结果：**PASS** — CalendarPage 21 tests；CsvExportClick 3 tests（全量 66 passed）
+- 勾选：tasks.md 5.1
+
+## §P5-5.2 — 公开报告页
+
+- 对应规格：`ui-hierarchy` / `share-report` — `/report/:id` 无三 Tab
+- 测试：`frontend/src/ReportPage.test.tsx`
+
+### RED
+
+- 命令：`cd frontend && npm test -- src/ReportPage.test.tsx`
+- 结果：**FAIL** — 无 `/report/:id` 路由，找不到「用户名称」「建议分析」
+
+### GREEN
+
+- 实现：独立 `ReportPage`；上下用户名称 / 事项列表 / 成长曲线 / 建议分析空态；范围可见
+- 命令：同上 / 全量 `npm test`
+- 结果：**PASS** — 1 test + 全量 66 passed
+- 勾选：tasks.md 5.2
+
+## §P5-6.x — 文档与 main specs
+
+- 已更新 `doc/workOut-产品文档.md`、`doc/workOut-功能文档.md`、README 第 6–7 条与 `WORKOUT_PUBLIC_BASE_URL`
+- 已 sync：`openspec/specs/{share-report,body-history,user-profile,daily-record,calendar-view,ui-hierarchy}/spec.md`
+- 勾选：tasks.md 6.1–6.4
+
+## §P5-7.1 — 相关回归（本会话）
+
+- 命令：`cd backend && mvn -q test -Dtest=ProfileHistoryTrendsTest,CsvExportTest,ShareReportTest,FlywayMigrationTest,SpaHostingTest`
+- 结果：**PASS** — exit 0（窄测；未打满 SQLPub 全量 `mvn test`）
+- 命令：`cd frontend && npm test`
+- 结果：**PASS** — Test Files 12 passed；Tests 66 passed
+- 勾选：tasks.md 7.1
+
+## §P5-7.2 — openspec validate
+
+- 命令：`openspec validate phase-5-share-report-curve-xlsx --type change`
+- 结果：`Change 'phase-5-share-report-curve-xlsx' is valid`
+- 勾选：tasks.md 7.2
+
+## §P5-7.3 — 不提交 git
+
+- 本实现会话未执行 `git commit` / `git push`
+- 勾选：tasks.md 7.3
 
 
