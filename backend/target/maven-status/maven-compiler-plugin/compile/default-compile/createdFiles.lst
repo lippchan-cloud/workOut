@@ -1,5 +1,6 @@
 com/workout/modules/profile/api/package-info.class
 com/workout/modules/auth/api/package-info.class
+com/workout/modules/record/application/DailyRecordService.class
 com/workout/modules/profile/infrastructure/package-info.class
 com/workout/modules/record/application/package-info.class
 com/workout/modules/profile/application/package-info.class
