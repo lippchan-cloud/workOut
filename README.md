@@ -72,6 +72,7 @@ docker run --rm -p 18080:8080 \
 | `WORKOUT_DB_USER` | 可选，覆盖数据库用户 |
 | `WORKOUT_DB_PASSWORD` | 可选，覆盖数据库密码 |
 | `WORKOUT_JWT_SECRET` | 可选，覆盖 JWT HMAC 密钥 |
+| `WORKOUT_DEEPSEEK_API_KEY` | DeepSeek API Key；**不要写入仓库**。启动时赋给 `demo`/`lipp` |
 | `WORKOUT_PUBLIC_BASE_URL` | 可选，分享 H5 链接基址，默认 `http://localhost:8080` |
 
 ## 测试命令
