@@ -6,7 +6,7 @@
 | 文档版本 | v1.0 |
 | 分支 | `feat/init-workout-mvp` |
 | 规范 | [workOut-TDD规范.md](./workOut-TDD规范.md) |
-| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md)、[extend-calendar-month-range-csv tasks](../openspec/changes/extend-calendar-month-range-csv/tasks.md)、[phase-2-production-hardening tasks](../openspec/changes/phase-2-production-hardening/tasks.md)、[phase-3-ui-hierarchy tasks](../openspec/changes/phase-3-ui-hierarchy/tasks.md) |
+| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md)、[extend-calendar-month-range-csv tasks](../openspec/changes/extend-calendar-month-range-csv/tasks.md)、[phase-2-production-hardening tasks](../openspec/changes/phase-2-production-hardening/tasks.md)、[phase-3-ui-hierarchy tasks](../openspec/changes/phase-3-ui-hierarchy/tasks.md)、[phase-4-month-csv-body-history-curves tasks](../openspec/changes/phase-4-month-csv-body-history-curves/tasks.md) |
 
 > 规则：未写本页证据，不得勾选 `tasks.md`。
 
@@ -85,6 +85,18 @@
 | P3-6.1 | 相关回归 | N/A | 已证 | §P3-6.1 | 是 |
 | P3-6.2 | openspec validate | N/A | 通过 | §P3-6.2 | 是 |
 | P3-6.3 | 不提交 git | N/A | 已遵守 | §P3-6.3 | 是 |
+| P4-1.1 | 资料历史与 trends | 已证 | 已证 | §P4-1.1 | 是 |
+| P4-1.2 | trends 条数隔离 | 已证 | 已证 | §P4-1.2 | 是 |
+| P4-2.1 | CSV 表头身体列 | 已证 | 已证 | §P4-2.x | 是 |
+| P4-2.2 | CSV 按 recordedAt 对齐 | 已证 | 已证 | §P4-2.x | 是 |
+| P4-3.1 | 注销删历史 | 已证 | 已证 | §P4-3.1 | 是 |
+| P4-4.1 | 上海时分格式化 | 已证 | 已证 | §P4-4.1 | 是 |
+| P4-4.2 | 日/月列表时分 | 已证 | 已证 | §P4-4.2 | 是 |
+| P4-4.3 | 变化曲线页 | 已证 | 已证 | §P4-4.3 | 是 |
+| P4-5.x | 文档与 main specs | N/A | 已写 | §P4-5.x | 是 |
+| P4-6.1 | 相关回归 | N/A | 已证 | §P4-6.1 | 是 |
+| P4-6.2 | openspec validate | N/A | 通过 | §P4-6.2 | 是 |
+| P4-6.3 | 不提交 git | N/A | 已遵守 | §P4-6.3 | 是 |
 
 ---
 
@@ -1059,6 +1071,121 @@ OpenSpec：`openspec/changes/phase-3-ui-hierarchy/`。未 commit。
 - 勾选：tasks.md 6.2
 
 ### Task 6.3 — 不提交 git
+
+- 本实现会话未执行 `git commit` / `git push`
+- 勾选：tasks.md 6.3
+
+---
+
+## §P4-1.1 — 资料历史与 trends API
+
+- 对应规格：`body-history` — Profile changes are stored as history snapshots；Trends without token is 401
+- 测试类：`backend/src/test/java/com/workout/profile/ProfileHistoryTrendsTest.java`
+
+### RED
+
+- 命令：`cd backend && mvn -q test -Dtest=ProfileHistoryTrendsTest`
+- 结果：**FAIL** — Tests run: 5, Failures: 4
+- 失败原因摘要：`GET /api/v1/profile/trends` expected 200 but was **404**（`{"code":404,"msg":"资源不存在"}`）；无 Token 用例为 401（符合既有过滤器）
+
+### GREEN
+
+- 实现：Flyway `V4__profile_history.sql`、`ProfileHistoryEntity`/`Repository`、`ProfileService.upsert` 写快照、`GET /api/v1/profile/trends`
+- 命令：同上
+- 结果：**PASS** — exit 0（本会话复跑 `ProfileHistoryTrendsTest,CsvExportTest,DeleteAccountTest,FlywayMigrationTest` 亦 exit 0）
+- 勾选：tasks.md 1.1
+
+## §P4-1.2 — trends 条数与隔离
+
+- 对应规格：`body-history` — Owner sees own history and counts；Cross-user isolation
+- 测试方法：`ProfileHistoryTrendsTest.trendsShouldIncludeOwnRecordCountsAndHideOtherUsers`
+- RED：同 §P4-1.1（trends 404）
+- GREEN：一次查出 `recordedAt` 再按上海自然日内存聚合；用户 B `bodyHistory.length=0`、`recordCounts.length=0`
+- 勾选：tasks.md 1.2
+
+## §P4-2.x — CSV 身体列与 recordedAt 对齐
+
+- 对应规格：`daily-record` — CSV export includes point-in-time body columns
+- 测试类：`backend/src/test/java/com/workout/record/CsvExportTest.java`
+
+### RED
+
+- 命令：`cd backend && mvn -q test -Dtest=CsvExportTest#exportEmptyDayShouldContainHeaderOnly,CsvExportTest#exportRowsShouldAlignHeightToHistoryAtRecordedAt`
+- 结果：**FAIL**
+- 失败原因摘要：空日表头 expected `记录时间,类型,内容,昵称,身高cm,体重kg` but was `记录时间,类型,内容`；对齐行 `早训` 不含 `170`
+
+### GREEN
+
+- 实现：`DailyRecordService.exportCsv` 一次加载 `work_out_profile_history`，`ProfileHistoryResolver.resolve` 取 `changedAt <= recordedAt` 最后一条
+- 命令：`cd backend && mvn -q test -Dtest=CsvExportTest`
+- 结果：**PASS** — exit 0（11 tests，含 BOM 与对齐）
+- 勾选：tasks.md 2.1、2.2
+
+## §P4-3.1 — 注销批量删历史
+
+- 对应规格：注销不得留下 `work_out_profile_history` 外键
+- 测试方法：`DeleteAccountTest.deleteAccountWithProfileHistoryShouldSucceed`
+- GREEN：先 PUT 资料再 `DELETE /api/v1/auth/me` 返回 200（`AuthService.deleteMe` 调用 `profileHistoryRepository.deleteByUserId`）
+- 命令：`cd backend && mvn -q test -Dtest=DeleteAccountTest`
+- 结果：**PASS** — exit 0
+- 勾选：tasks.md 3.1
+
+## §P4-4.1 — 上海时分格式化
+
+- 对应规格：`calendar-view` — Calendar lists show recorded time of day
+- 测试文件：`frontend/src/calendar/week.test.ts`
+
+### RED
+
+- 命令：`cd frontend && npm test -- src/calendar/week.test.ts`
+- 结果：**FAIL** — `formatShanghaiHm is not a function` / `formatShanghaiMdHm is not a function`
+
+### GREEN
+
+- 实现：`frontend/src/calendar/week.ts` `formatShanghaiHm` / `formatShanghaiMdHm`
+- 命令：同上
+- 结果：**PASS** — Tests 5 passed
+- 勾选：tasks.md 4.1
+
+## §P4-4.2 / 4.3 — 列表时分与变化曲线页
+
+- 对应规格：`calendar-view` / `ui-hierarchy` — 列表时分；`/calendar/trends`
+- 测试文件：`frontend/src/CalendarPage.test.tsx`
+
+### RED
+
+- 命令：`cd frontend && npm test -- src/CalendarPage.test.tsx`
+- 结果：**FAIL** — 4 failed | 15 passed：找不到 `07:30` / `08-01 07:30`；找不到按钮「变化曲线」；找不到「还没有身体变化数据」
+
+### GREEN
+
+- 实现：`CalendarPage` 列表展示时分 + 「变化曲线」入口；`TrendsPage` SVG；路由 `/calendar/trends`
+- 命令：`cd frontend && npm test -- src/calendar/week.test.ts src/CalendarPage.test.tsx src/CsvExportClick.test.tsx src/ProfilePage.test.tsx`
+- 结果：**PASS** — Test Files 4 passed；Tests 34 passed
+- 勾选：tasks.md 4.2、4.3
+
+## §P4-5.x — 文档与 main specs
+
+- 已更新 `doc/workOut-产品文档.md`、`doc/workOut-功能文档.md`、README 第 6–7 条
+- 已 sync：`openspec/specs/{body-history,calendar-view,daily-record,user-profile,ui-hierarchy}/spec.md`
+- 勾选：tasks.md 5.1–5.4
+
+## §P4-6.1 — 相关回归（本会话）
+
+- 命令：`cd backend && mvn -q test -Dtest=ProfileHistoryTrendsTest,CsvExportTest,DeleteAccountTest,FlywayMigrationTest`
+- 结果：**PASS** — exit 0
+- 命令：`cd frontend && npm test -- src/calendar/week.test.ts src/CalendarPage.test.tsx src/CsvExportClick.test.tsx src/ProfilePage.test.tsx`
+- 结果：**PASS** — 34 passed
+- 未跑全量 `mvn test`（避免再开连接池打满 SQLPub）
+- 勾选：tasks.md 6.1
+
+## §P4-6.2 — openspec validate
+
+- 命令：`openspec validate phase-4-month-csv-body-history-curves --type change`
+- 结果：`Change 'phase-4-month-csv-body-history-curves' is valid`
+- 勾选：tasks.md 6.2
+
+## §P4-6.3 — 不提交 git
 
 - 本实现会话未执行 `git commit` / `git push`
 - 勾选：tasks.md 6.3

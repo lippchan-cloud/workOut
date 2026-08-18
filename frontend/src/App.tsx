@@ -7,6 +7,7 @@ import { RecordFormPage, RecordPage, RecordTypePage } from "./pages/RecordPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { ProfileAccountPage, ProfileBodyPage, ProfilePage } from "./pages/ProfilePage";
 import { RecordDetailPage } from "./pages/RecordDetailPage";
+import { TrendsPage } from "./pages/TrendsPage";
 import { CmsPage } from "./pages/CmsPage";
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
                 <Route path="/record/consume" element={<RecordFormPage type="CONSUME" />} />
                 <Route path="/record/intake" element={<RecordFormPage type="INTAKE" />} />
                 <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/calendar/trends" element={<TrendsPage />} />
                 <Route path="/calendar/records/:id" element={<RecordDetailPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/profile/body" element={<ProfileBodyPage />} />

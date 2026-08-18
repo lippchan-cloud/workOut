@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { apiGet } from "../api/client";
-import { addWeeks, countByLocalYmd, formatShanghaiYmd, formatYearMonth, formatYmd, parseYmd, weekContaining } from "../calendar/week";
+import { addWeeks, countByLocalYmd, formatShanghaiHm, formatShanghaiMdHm, formatShanghaiYmd, formatYearMonth, formatYmd, parseYmd, weekContaining } from "../calendar/week";
 
 type RecordItem = {
   id: number;
@@ -257,16 +257,24 @@ export function CalendarPage() {
                 style={{ color: item.type === "CONSUME" ? "#16A34A" : "#DC2626" }}
               >
                 <button type="button" className="record-list__open" onClick={() => openDetail(item)}>
-                  {item.content}
+                  <span className="record-list__time">
+                    {mode === "day" ? formatShanghaiHm(item.recordedAt) : formatShanghaiMdHm(item.recordedAt)}
+                  </span>
+                  <span className="record-list__content">{item.content}</span>
                 </button>
               </li>
             ))}
           </ul>
         ) : null}
 
-        <button type="button" className="btn btn-primary btn-block" onClick={onExport}>
-          导出 CSV
-        </button>
+        <div className="row">
+          <button type="button" className="btn btn-text" onClick={() => navigate("/calendar/trends")}>
+            变化曲线
+          </button>
+          <button type="button" className="btn btn-primary btn-block" onClick={onExport}>
+            导出 CSV
+          </button>
+        </div>
       </div>
     </div>
   );

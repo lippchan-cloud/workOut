@@ -652,6 +652,27 @@ button {
   text-align: left;
   padding: 0.75rem 0.85rem;
   cursor: pointer;
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.record-list__time {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.78;
+  font-size: 0.85rem;
+}
+
+.record-list__content {
+  flex: 1 1 auto;
+}
+
+.trend-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  color: #93c5fd;
 }
 
 .record-list__open:hover,

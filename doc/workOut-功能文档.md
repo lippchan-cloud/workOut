@@ -4,12 +4,12 @@
 | --- | --- |
 | 产品名称 | workOut |
 | 文档类型 | 功能文档 |
-| 文档版本 | v1.2 |
+| 文档版本 | v1.3 |
 | 日期 | 2026-08-18 |
 | 依据 | `workOut/README.md`、[workOut-产品文档.md](./workOut-产品文档.md) |
 | 文档用途 | 作为前后端实现、联调与测试的功能规格 |
 | 配套文档 | [workOut-技术架构.md](./workOut-技术架构.md) |
-| 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/)、[`phase-3-ui-hierarchy`](../openspec/changes/phase-3-ui-hierarchy/) |
+| 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/)、[`phase-3-ui-hierarchy`](../openspec/changes/phase-3-ui-hierarchy/)、[`phase-4-month-csv-body-history-curves`](../openspec/changes/phase-4-month-csv-body-history-curves/) |
 
 ---
 
@@ -28,9 +28,11 @@
 | 日历 | 按周展示，默认选中今日；周切换为小控件 | P0 |
 | 日历 | 选中日期后展示当天记录列表；有记录格子显示条数气泡 | P0 |
 | 日历 | 点列表项进入事项详情；详情可编辑/删除 | P0 |
-| 日历 | 列表按时间正序；消耗绿色、摄入红色 | P0 |
-| 日历 | 按选中日期导出 CSV | P0 |
+| 日历 | 列表按时间正序并展示时分；消耗绿色、摄入红色 | P0 |
+| 日历 | 按当前筛选导出 CSV（含当时身体资料） | P0 |
+| 日历 | 二级页变化曲线（身高/体重） | P0 |
 | 我的 | 二级三选项后再进身体资料或账号安全 | P0 |
+| 我的 | 身体资料变更写入历史 | P0 |
 | 启动 | CLI 启动前后端一体应用 | P0 |
 
 ---
@@ -44,8 +46,9 @@
 | — | 登录 | `/login` | 用户名 + 密码；成功后按 `redirect` 回跳 |
 | — | 注册 | `/register` | 用户名 + 密码；成功后登录或引导登录 |
 | 1 | 记录 | `/` 或 `/record` | 一级大按钮 → 二级选类型 → 三级表单；需登录 |
-| 2 | 日历 | `/calendar` | 周视图（小周切换 + hover + 气泡）+ 日列表 + 导出；需登录 |
+| 2 | 日历 | `/calendar` | 周视图（小周切换 + hover + 气泡）+ 日/月列表（含时分）+ 导出；需登录 |
 | 2a | 事项详情 | `/calendar/records/:id` | 只读详情 + 编辑/删除；刷新走 GET by id |
+| 2b | 变化曲线 | `/calendar/trends` | 身高/体重随时间；返回日历 |
 | 3 | 我的 | `/profile` | 二级三选项；需登录 |
 | 3a | 身体资料 | `/profile/body` | 昵称/身高/体重 |
 | 3b | 账号安全 | `/profile/account` | 改密/注销；ADMIN 可见 CMS |
@@ -233,6 +236,10 @@
 
 「补记」为次要/文字按钮，带 `date` 进入记录类型选择，不得做成与周切换或首页大按钮同级的大主按钮。
 
+### 5.2.2 月 / 区间列表时间
+
+按月或自定义区间时，列表每一条必须展示上海时区日期+时分（`MM-DD HH:mm`），不得只有内容。日模式展示 `HH:mm`。
+
 类型文案：
 
 - `CONSUME` → 「消耗」
@@ -245,36 +252,45 @@
 | 消耗 | 支出型活动 | 绿色 `#16A34A`（可微调，但必须是绿） |
 | 摄入 | 摄入型活动 | 红色 `#DC2626`（可微调，但必须是红） |
 
-### 5.3 按日导出 CSV
+### 5.3 按筛选导出 CSV
 
-入口：日历页，位于日列表上方或下方，文案「导出 CSV」。作用于**当前选中日期**、**当前用户**，不是整周。
+入口：日历页，文案「导出 CSV」。作用于**当前筛选**（单日 / 整月 / 区间）、**当前用户**。
 
 #### 5.3.1 文件
 
 | 项 | 规则 |
 | --- | --- |
-| 文件名 | `workout-YYYY-MM-DD.csv`，日期为选中日 |
+| 文件名 | 单日 `workout-YYYY-MM-DD.csv`；整月 `workout-YYYY-MM.csv`；跨日 `workout-from_to.csv` |
 | 编码 | UTF-8，带 BOM，保证 Excel 打开中文不乱码 |
 | 分隔符 | 英文逗号 |
-| 换行 | `\r\n` |
+| 换行 | `\n` |
 
 #### 5.3.2 列定义
 
 | 列名 | 说明 | 示例 |
 | --- | --- | --- |
-| 记录时间 | `yyyy-MM-dd HH:mm` | 2026-08-18 07:30 |
+| 记录时间 | 上海时区 `yyyy-MM-dd HH:mm:ss` | 2026-08-18 07:30:00 |
 | 类型 | 消耗 / 摄入 | 消耗 |
 | 内容 | 用户原文 | 跑步 30 分钟 |
+| 昵称 | 该条 `recordedAt` 当时有效的资料快照 | 小明 |
+| 身高cm | 当时身高；无匹配历史则空 | 175 |
+| 体重kg | 当时体重；无匹配历史则空 | 70 |
+
+「当时有效」= 该用户历史中 `changedAt <= recordedAt` 的最后一条快照。禁止用当前资料覆盖更早事项。导出时一次加载该用户历史再内存匹配，禁止按行查库。
 
 行顺序与页面列表一致：时间正序。
 
 #### 5.3.3 空数据
 
-选中日无记录时：仍允许导出，仅含表头，无数据行。导出后提示「当日暂无记录，已导出空表」。
+筛选区间无记录时：仍允许导出，仅含表头，无数据行。
 
 #### 5.3.4 触发
 
 点击后由浏览器下载文件。失败时提示「导出失败，请稍后重试」。未登录则先跳转登录。
+
+### 5.4 变化曲线
+
+入口：日历页「变化曲线」，路由 `/calendar/trends`。横轴时间，纵轴可切换身高/体重（简单 SVG，不引入图表库）。无历史且无记录条数时中文空态。返回回到 `/calendar`。数据来自 `GET /api/v1/profile/trends`。
 
 ---
 
@@ -301,10 +317,10 @@
 | 退出登录 | 选项层即时执行 | 清 Token，回未登录记录壳 |
 
 1. 点「身体资料」再拉当前用户资料并回填；从未保存过则全空。
-2. 用户修改后点「保存资料」。
+2. 用户修改后点「保存资料」。相对上一快照有变化时写入 `work_out_profile_history`（变更时间 + 昵称/身高/体重快照）。
 3. 成功提示「保存成功」；失败保留编辑内容。
 4. 「返回」回到 `/profile` 选项层。
-5. 注销须中文确认后再调 `DELETE /api/v1/auth/me`。
+5. 注销须中文确认后再调 `DELETE /api/v1/auth/me`（同时按 userId 批量删除资料历史）。
 
 ### 6.3 校验
 
@@ -422,9 +438,9 @@ data：新建记录对象（含 id、type、content、recordedAt）。
 
 ### 8.5 导出 CSV（需登录）
 
-`GET /api/v1/dailyRecords/exportCsv?date=yyyy-MM-dd`
+`GET /api/v1/dailyRecords/exportCsv?date=yyyy-MM-dd`（亦可 `yearMonth` 或 `from`+`to`，互斥）
 
-返回文件流，`Content-Type: text/csv; charset=utf-8`，`Content-Disposition` 带文件名。仅当前用户数据。
+返回文件流，`Content-Type: text/csv; charset=utf-8`，`Content-Disposition` 带文件名。仅当前用户数据。UTF-8 BOM。表头：`记录时间,类型,内容,昵称,身高cm,体重kg`。身体列按该行 `recordedAt` 匹配历史快照。
 
 **推荐后端导出**，保证 BOM、列顺序、中文类型文案一致。
 
@@ -433,6 +449,12 @@ data：新建记录对象（含 id、type、content、recordedAt）。
 `GET /api/v1/profile`
 
 data：`{ nickname, heightCm, weightKg }`，未填字段为 `null`。当前用户一份。
+
+### 8.6a 变化曲线数据（需登录）
+
+`GET /api/v1/profile/trends`
+
+data：`{ bodyHistory: [{ changedAt, nickname, heightCm, weightKg }], recordCounts: [{ date, count }] }`。仅本人；无 Token 401。历史一次查出；条数一次查出 `recordedAt` 再按上海自然日聚合。
 
 ### 8.7 保存个人资料（需登录）
 
