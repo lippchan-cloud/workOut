@@ -14,7 +14,7 @@ react
 ### 后端：
 springboot
 ### db
-mysql
+mysql，连接信息见 [doc/workOut-数据库连接.md](./doc/workOut-数据库连接.md)
 
 ## 启动方式
 前后端不分离，用户可以cli启动
