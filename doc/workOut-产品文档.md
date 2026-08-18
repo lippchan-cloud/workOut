@@ -4,12 +4,12 @@
 | --- | --- |
 | 产品名称 | workOut |
 | 文档类型 | 产品文档 |
-| 文档版本 | v1.5 |
+| 文档版本 | v1.6 |
 | 日期 | 2026-08-18 |
 | 依据 | `workOut/README.md` |
 | 文档用途 | 对齐产品定位、用户价值、范围边界与验收口径 |
 | 配套文档 | [workOut-功能文档.md](./workOut-功能文档.md)、[workOut-技术架构.md](./workOut-技术架构.md) |
-| 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/proposal.md)、[`phase-2-production-hardening`](../openspec/changes/phase-2-production-hardening/)、[`phase-3-ui-hierarchy`](../openspec/changes/phase-3-ui-hierarchy/)、[`phase-4-month-csv-body-history-curves`](../openspec/changes/phase-4-month-csv-body-history-curves/)、[`phase-5-share-report-curve-xlsx`](../openspec/changes/phase-5-share-report-curve-xlsx/)、[`phase-6-share-export-demo`](../openspec/changes/phase-6-share-export-demo/) |
+| 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/proposal.md)、[`phase-2-production-hardening`](../openspec/changes/phase-2-production-hardening/)、[`phase-3-ui-hierarchy`](../openspec/changes/phase-3-ui-hierarchy/)、[`phase-4-month-csv-body-history-curves`](../openspec/changes/phase-4-month-csv-body-history-curves/)、[`phase-5-share-report-curve-xlsx`](../openspec/changes/phase-5-share-report-curve-xlsx/)、[`phase-6-share-export-demo`](../openspec/changes/phase-6-share-export-demo/)、[`cms-nav-user-detail-reports`](../openspec/changes/cms-nav-user-detail-reports/) |
 | TDD | [TDD 规范](./workOut-TDD规范.md) · [TDD 验证记录](./workOut-TDD验证记录.md) |
 
 ---
@@ -104,7 +104,7 @@ MVP 按**多账号、个人数据隔离**设计：一人一账号，不引入组
 | 第一项 | 记录 | 写下当日消耗项、当日摄入项（需登录） |
 | 第二项 | 日历 | 按周/月看列表（含时分），点条目进详情，导出 / 分享（须身高体重，需登录） |
 | 第三项 | 我的 | 先选再填：身体资料（含真实日期与成长曲线）或账号安全（需登录） |
-| 独立页 | 登录 / 注册 / 公开报告 | 用户名 + 密码；成功后回到原目标页。报告 `/report/:id` 不走三 Tab |
+| 独立页 | 登录 / 注册 / 公开报告 / CMS | 用户名 + 密码；成功后回到原目标页。报告 `/report/:id` 不走三 Tab。CMS `/cms` 为管理员功能栏（概览、账户列表、用户详情、报告），不走底部三 Tab |
 
 默认落地：「记录」Tab 壳子（可见导航）。未登录时点 Tab 或业务操作 → 跳转登录。
 
@@ -150,8 +150,15 @@ MVP 按**多账号、个人数据隔离**设计：一人一账号，不引入组
 
 1. 进入「我的」，先看到三个选项。
 2. 点「身体资料」填写身高、体重、资料真实日期（默认此刻）并保存（有效变更写入历史，时间为所选日期）；页下方是成长曲线。
-3. 点「账号安全」改密或注销；管理员在此进入 CMS。
+3. 点「账号安全」改密或注销；管理员在此进入 CMS（功能栏：概览 / 账户列表 / 用户详情 / 报告）。
 4. 「退出登录」在选项层即可完成。返回键回到选项层。
+
+### 4.4 后台 CMS（管理员）
+
+1. 管理员从账号安全进入 `/cms`，看到顶栏功能栏，当前栏高亮。
+2. 「账户列表」查看全站账户（无密码）；点用户名进入 `/cms/users/:userId`。
+3. 用户详情展示角色、资料、最近记录摘要，以及该用户**已有**分享链接（打开公开 `/report/:id`）。CMS **不**代用户生成报告。
+4. 「报告」列出管理员可见的已有分享，点开公开报告页。
 
 ---
 
@@ -170,6 +177,7 @@ MVP 按**多账号、个人数据隔离**设计：一人一账号，不引入组
 - 身体资料含真实日期；变更写入历史；注销时批量删除历史与分享。
 - 成长曲线在 `/profile/body` 下方：单位 cm/kg、时间轴、横向拖动、−/+ 改 hour/day/week/month 粒度。
 - 我的：二级三选项后再进身体资料或账号安全。
+- 管理员 CMS：独立页 `/cms`，功能栏含概览、账户列表、用户详情、报告；须 ADMIN JWT。
 - CLI 启动整站（Spring Boot 托管前端静态资源 + API）。
 
 ### 5.2 明确不做（本期）
@@ -239,5 +247,6 @@ MVP 按**多账号、个人数据隔离**设计：一人一账号，不引入组
 9. 能从日历二级页分享 H5 报告链接（`/report/:id`），未登录可打开该范围快照，报告可回首页。
 10. 用户 A 的记录与资料对用户 B 不可见。
 11. 通过 CLI 启动后，浏览器可完成本页全部操作。
+12. 管理员可打开 CMS 功能栏，查看用户详情与已有分享报告；普通用户与未登录不可进入。
 
 功能规则、字段、异常与接口级说明见《功能文档》；架构与流程见《技术架构》。

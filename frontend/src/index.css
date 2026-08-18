@@ -473,7 +473,7 @@ button {
   font-size: 0.88rem;
 }
 
-/* —— CMS（临时无鉴权） —— */
+/* —— CMS（ADMIN 功能栏） —— */
 .cms-page {
   min-height: 100vh;
   width: min(72rem, 100%);
@@ -488,6 +488,45 @@ button {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.cms-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 0 1.25rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--stroke);
+}
+
+.cms-nav__link {
+  padding: 0.45rem 0.8rem;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.cms-nav__link.active,
+.cms-nav__link[aria-current="page"] {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cms-dl {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.45rem 1rem;
+}
+
+.cms-dl dt {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.cms-dl dd {
+  margin: 0;
 }
 
 .cms-page__banner {

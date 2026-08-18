@@ -4,12 +4,12 @@
 | --- | --- |
 | 产品名称 | workOut |
 | 文档类型 | 功能文档 |
-| 文档版本 | v1.5 |
+| 文档版本 | v1.6 |
 | 日期 | 2026-08-18 |
 | 依据 | `workOut/README.md`、[workOut-产品文档.md](./workOut-产品文档.md) |
 | 文档用途 | 作为前后端实现、联调与测试的功能规格 |
 | 配套文档 | [workOut-技术架构.md](./workOut-技术架构.md) |
-| 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/)、[`phase-3-ui-hierarchy`](../openspec/changes/phase-3-ui-hierarchy/)、[`phase-4-month-csv-body-history-curves`](../openspec/changes/phase-4-month-csv-body-history-curves/)、[`phase-5-share-report-curve-xlsx`](../openspec/changes/phase-5-share-report-curve-xlsx/)、[`phase-6-share-export-demo`](../openspec/changes/phase-6-share-export-demo/) |
+| 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/)、[`phase-3-ui-hierarchy`](../openspec/changes/phase-3-ui-hierarchy/)、[`phase-4-month-csv-body-history-curves`](../openspec/changes/phase-4-month-csv-body-history-curves/)、[`phase-5-share-report-curve-xlsx`](../openspec/changes/phase-5-share-report-curve-xlsx/)、[`phase-6-share-export-demo`](../openspec/changes/phase-6-share-export-demo/)、[`cms-nav-user-detail-reports`](../openspec/changes/cms-nav-user-detail-reports/) |
 
 ---
 
@@ -34,6 +34,7 @@
 | 我的 | 二级三选项后再进身体资料或账号安全 | P0 |
 | 我的 | 身体资料含真实日期；页下方成长曲线（cm/kg、可拖、粒度缩放） | P0 |
 | 我的 | 身体资料变更写入历史 | P0 |
+| CMS | 管理员功能栏：概览、账户列表、用户详情、已有分享报告 | P0 |
 | 启动 | CLI 启动前后端一体应用 | P0 |
 
 ---
@@ -54,7 +55,11 @@
 | 3 | 我的 | `/profile` | 二级三选项；需登录 |
 | 3a | 身体资料 | `/profile/body` | 昵称/身高/体重/资料真实日期 + 下方成长曲线 |
 | — | 公开报告 | `/report/:id` | 独立页（无三 Tab）：用户名称、事项列表、成长曲线、建议分析空态；可回首页 `/` |
-| 3b | 账号安全 | `/profile/account` | 改密/注销；ADMIN 可见 CMS |
+| 3b | 账号安全 | `/profile/account` | 改密/注销；ADMIN 可见「后台管理」→ `/cms` |
+| — | CMS 概览 | `/cms` | 独立页（无三 Tab）；顶栏功能栏；账户数/分享数 |
+| — | CMS 账户 | `/cms/accounts` | 全站账户表；点用户名进详情 |
+| — | CMS 用户详情 | `/cms/users/:userId` | 资料 + 最近记录 + 已有分享链接 |
+| — | CMS 报告 | `/cms/reports` | 已有分享列表；打开公开 `/report/:id` |
 
 切换 Tab 不丢未提交表单时，需提示或自动保留输入草稿（建议：离开记录页前提示未保存内容）。  
 未登录状态下点 Tab：不进入业务页内容加载，直接跳转 `/login?redirect=<目标路径>`。
@@ -362,6 +367,19 @@
 
 本期**不计算、不展示 BMI**，不根据数值给出健康建议。
 
+### 6.4 后台 CMS（仅 ADMIN）
+
+独立于底部三 Tab。未登录访问 `/cms` 及子路径跳转 `/login?redirect=<当前路径>`。普通用户见中文拒绝，不拉账户表。
+
+| 功能栏 | 路由 | 行为 |
+| --- | --- | --- |
+| 概览 | `/cms` | 账户数、分享数与入口链接（复用下列 GET，不新开 API） |
+| 账户列表 | `/cms/accounts` | 用户ID、用户名、创建时间、昵称、身高、体重；用户名链到详情 |
+| 用户详情 | `/cms/users/:userId` | 用户名、角色、创建时间、昵称、身高、体重、记录条数与最近若干条；该用户已有分享链到 `/report/:id`。`/cms/users` 空态提示从账户列表选择 |
+| 报告 | `/cms/reports` | 列出已有分享（token、userId、用户名、from、to、createdAt），新窗口打开公开报告 |
+
+CMS **不得**用管理员身份代用户创建分享或改写快照。身份只信 JWT；列表与详情禁止 N+1。
+
 ---
 
 ## 7. 数据对象（功能视角）
@@ -520,14 +538,35 @@ request：`{ nickname, heightCm, weightKg, changedAt }`，前三项可空；`cha
 
 data：保存后的完整资料。
 
-### 8.8 错误码
+### 8.9 CMS 账户列表（需 ADMIN）
+
+`GET /api/v1/admin/accounts`
+
+无 Token：401。USER：403。成功 `data.list[]`：`userId, username, createdAt, role, nickname, heightCm, weightKg`。不含 `passwordHash`。
+
+### 8.10 CMS 用户详情（需 ADMIN）
+
+`GET /api/v1/admin/accounts/{userId}`
+
+路径 `userId` 是被查看对象，不是操作者。无 Token 401；USER 403；未知用户 404。
+
+data：`userId, username, role, createdAt, nickname, heightCm, weightKg, recordCount, recentRecords[], shares[]`。`shares[].id` 为公开 token。
+
+### 8.11 CMS 已有分享列表（需 ADMIN）
+
+`GET /api/v1/admin/reports`
+
+无 Token 401；USER 403。`data.list[]`：`id`（token）、`userId`、`username`、`from`、`to`、`createdAt`。只读已有行，不创建分享。
+
+### 8.12 错误码
 
 | code / HTTP | 场景 |
 | --- | --- |
 | 200 | 成功 |
 | 400 | 参数校验失败；缺身高体重导出/分享「请先填写身高和体重」 |
 | 401 | 未登录、Token 无效或过期 |
-| 404 | 记录不存在；报告不存在 |
+| 403 | 已登录但非 ADMIN 访问 CMS |
+| 404 | 记录不存在；报告不存在；CMS 用户不存在 |
 | 500 | 服务异常 |
 
 业务校验失败用 HTTP 400 + `msg` 中文即可，暂不扩展领域码。
@@ -587,6 +626,9 @@ data：保存后的完整资料。
 | T11 | 用户 A 写记录后用户 B 登录 | B 看不到 A 的记录与资料 |
 | T12 | 无 Token 调业务接口 | 401 |
 | T13 | CLI 启动 | 浏览器可完成 T00～T12 |
+| T14 | 未登录打开 `/cms` | 跳转 `/login?redirect=/cms` |
+| T14b | ADMIN 打开 CMS | 见功能栏；账户列表点用户名进详情；报告页可打开公开报告 |
+| T14c | USER 调 CMS API | 403 |
 
 ---
 
@@ -603,5 +645,6 @@ data：保存后的完整资料。
 | 按筛选导出 xlsx / 分享 H5 | §5.3、§5.5 |
 | 成长曲线在身体资料页 | §5.4、§6 |
 | 我的：二级三选项后再进身体资料或账号安全 | §6 |
+| CMS 功能栏、用户详情、已有分享 | §6.4、§8.9～8.11 |
 | React + Spring Boot + MySQL + JWT | §8、§9 |
 | 前后端不分离，CLI 启动 | §9 |

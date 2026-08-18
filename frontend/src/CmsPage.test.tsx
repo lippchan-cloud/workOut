@@ -153,7 +153,7 @@ describe("CmsPage", () => {
     expect(screen.getByText("阿丽")).toBeInTheDocument();
     expect(screen.getByText("165")).toBeInTheDocument();
     expect(screen.getByText("52")).toBeInTheDocument();
-    expect(screen.getByText(/1/)).toBeInTheDocument();
+    expect(screen.getByText("最近记录（1）")).toBeInTheDocument();
     expect(screen.getByText("跑步")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /查看报告/ })).toHaveAttribute("href", "/report/abcToken");
     expect(screen.getByRole("link", { name: "用户详情" })).toHaveAttribute("aria-current", "page");

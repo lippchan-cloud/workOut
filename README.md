@@ -85,9 +85,9 @@ cd frontend && npm test
 
 窄测示例：`cd backend && mvn -q test -Dtest=AuthLoginTest`
 
-## 后台 CMS（第一阶段临时开放）
+## 后台 CMS（仅管理员）
 
-独立入口：`http://localhost:8080/cms`（登录页也有「后台管理」链接）。**无需登录**即可看到全部账户的用户名、创建时间、昵称、身高、体重；**不会展示密码或密码哈希**。这是临时措施，后续必须加鉴权；请勿对公网暴露。普通业务 API（记录/资料）仍需 JWT。
+独立入口：`http://localhost:8080/cms`（账号安全页「后台管理」）。须 **ADMIN JWT**；未登录跳转 `/login?redirect=/cms`；普通用户 403 / 页面拒绝。顶栏功能栏：**概览** `/cms`、**账户列表** `/cms/accounts`、**用户详情** `/cms/users/:userId`、**报告** `/cms/reports`。详情与报告只打开用户已有分享，不代生成。JSON 不含密码哈希。
 
 ## 文档
 - [产品文档](doc/workOut-产品文档.md)

@@ -6,7 +6,7 @@
 | 文档版本 | v1.0 |
 | 分支 | `feat/init-workout-mvp` |
 | 规范 | [workOut-TDD规范.md](./workOut-TDD规范.md) |
-| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md)、[extend-calendar-month-range-csv tasks](../openspec/changes/extend-calendar-month-range-csv/tasks.md)、[phase-2-production-hardening tasks](../openspec/changes/phase-2-production-hardening/tasks.md)、[phase-3-ui-hierarchy tasks](../openspec/changes/phase-3-ui-hierarchy/tasks.md)、[phase-4-month-csv-body-history-curves tasks](../openspec/changes/phase-4-month-csv-body-history-curves/tasks.md)、[phase-5-share-report-curve-xlsx tasks](../openspec/changes/phase-5-share-report-curve-xlsx/tasks.md) |
+| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md)、[extend-calendar-month-range-csv tasks](../openspec/changes/extend-calendar-month-range-csv/tasks.md)、[phase-2-production-hardening tasks](../openspec/changes/phase-2-production-hardening/tasks.md)、[phase-3-ui-hierarchy tasks](../openspec/changes/phase-3-ui-hierarchy/tasks.md)、[phase-4-month-csv-body-history-curves tasks](../openspec/changes/phase-4-month-csv-body-history-curves/tasks.md)、[phase-5-share-report-curve-xlsx tasks](../openspec/changes/phase-5-share-report-curve-xlsx/tasks.md)、[cms-nav-user-detail-reports tasks](../openspec/changes/cms-nav-user-detail-reports/tasks.md) |
 
 > 规则：未写本页证据，不得勾选 `tasks.md`。
 
@@ -113,6 +113,14 @@
 | P5-7.1 | 相关回归 | N/A | 已证 | §P5-7.1 | 是 |
 | P5-7.2 | openspec validate | N/A | 通过 | §P5-7.2 | 是 |
 | P5-7.3 | 不提交 git | N/A | 已遵守 | §P5-7.3 | 是 |
+| CMSNAV-1.1 | ADMIN 用户详情 API | 已证 | 已证 | §CMSNAV-1.1 | 是 |
+| CMSNAV-2.1 | ADMIN 分享列表 API | 已证 | 已证 | §CMSNAV-2.1 | 是 |
+| CMSNAV-3.1 | `/cms/**` SPA 回退 | 已证 | 已证 | §CMSNAV-3.1 | 是 |
+| CMSNAV-4.1 | CMS 功能栏/详情/报告页 | 已证 | 已证 | §CMSNAV-4.1 | 是 |
+| CMSNAV-5.x | 文档与 main specs | N/A | 已写 | §CMSNAV-5.x | 是 |
+| CMSNAV-6.1 | 相关回归 | N/A | 已证 | §CMSNAV-6.1 | 是 |
+| CMSNAV-6.2 | openspec validate | N/A | 通过 | §CMSNAV-6.2 | 是 |
+| CMSNAV-6.3 | 不提交 git | N/A | 已遵守 | §CMSNAV-6.3 | 是 |
 
 ---
 
@@ -1439,6 +1447,75 @@ OpenSpec：`openspec/changes/phase-3-ui-hierarchy/`。未 commit。
 - 勾选：tasks.md 6.2
 
 ## §P6-6.3 — 不提交 git
+
+- 本实现会话未执行 `git commit` / `git push`
+- 勾选：tasks.md 6.3
+
+## §CMSNAV-1.1 — Admin 用户详情 API
+
+- 对应规格：`openspec/changes/cms-nav-user-detail-reports/specs/admin-cms/spec.md` — Admin can open user detail
+- 测试类：`backend/src/test/java/com/workout/admin/AdminUserDetailTest.java`
+- RED 命令：`cd backend && mvn test -Dtest=AdminUserDetailTest`
+- RED 结果：FAIL — ADMIN 期望 200 实为 404（`NoResourceFoundException`，路径未实现）；USER 期望 403 实为 404。无 Token 401 承接既有 Security
+- GREEN 命令：`cd backend && mvn test -Dtest=AdminUserDetailTest,AdminAccountsListTest`
+- GREEN 结果：PASS — exit 0
+- 实现要点：`AdminAccountController.getAccount`；`AdminAccountService.getDetail`（用户/资料/count+top5 记录/该用户分享各一次查询）；未知 id 404；public `log.info`
+- 勾选：tasks.md 1.1
+
+## §CMSNAV-2.1 — Admin 分享列表 API
+
+- 对应规格：admin-cms — Admin can list existing share reports
+- 测试类：`backend/src/test/java/com/workout/admin/AdminReportsListTest.java`
+- RED 命令：`cd backend && mvn test -Dtest=AdminReportsListTest`
+- RED 结果：FAIL — ADMIN 期望 200 实为 404；USER 期望 403 实为 404
+- GREEN 命令：`cd backend && mvn test -Dtest=AdminReportsListTest`
+- GREEN 结果：PASS — exit 0
+- 实现要点：`GET /api/v1/admin/reports`；`findAllByOrderByCreatedAtDesc` + `findAllById` 拼用户名；不创建分享
+- 勾选：tasks.md 2.1
+
+## §CMSNAV-3.1 — CMS 子路径 SPA 回退
+
+- 对应规格：ui-hierarchy — CMS deep links stay outside the three-tab shell
+- 测试类：`SpaHostingTest`
+- RED 命令：`cd backend && mvn test -Dtest=SpaHostingTest#cmsAccountsDeepLinkShouldForwardToSpa,SpaHostingTest#cmsReportsDeepLinkShouldForwardToSpa,SpaHostingTest#cmsUserDetailDeepLinkShouldForwardToSpa`
+- RED 结果：FAIL — Status expected:<200> but was:<404>
+- GREEN 命令：`cd backend && mvn test -Dtest=SpaHostingTest`
+- GREEN 结果：PASS — exit 0
+- 实现要点：`SpaFallbackController` 增加 `/cms/**`
+- 勾选：tasks.md 3.1
+
+## §CMSNAV-4.1 — CMS 功能栏、详情、报告页
+
+- 对应规格：admin-cms 功能栏 / 详情 / 报告页；未登录仍跳登录
+- 测试文件：`frontend/src/CmsPage.test.tsx`
+- RED 命令：`cd frontend && npm test -- src/CmsPage.test.tsx`
+- RED 结果：FAIL — 8 failed：`/cms/reports` 未跳登录；无「概览」链接；`/cms/accounts` 无账户表；详情/报告无 `cms_alice`（子路径落入三 Tab 壳）
+- GREEN 命令：同上
+- GREEN 结果：PASS — Tests 11 passed
+- 实现要点：`CmsLayout` 顶栏功能栏 + 嵌套路由 `/cms` `/cms/accounts` `/cms/users/:userId` `/cms/reports`；用户名 Link；分享链到 `/report/:id`
+- 勾选：tasks.md 4.1
+
+## §CMSNAV-5.x — 文档与 main specs
+
+- 已更新 `doc/workOut-产品文档.md` §4.4、`doc/workOut-功能文档.md` §6.4/§8.9～8.11、`doc/workOut-技术架构.md`、README
+- 已 sync：`openspec/specs/admin-cms/spec.md`（新建）；`ui-hierarchy`、`share-report` 增加 CMS 要求
+- 勾选：tasks.md 5.1–5.5
+
+## §CMSNAV-6.1 — 相关回归（本会话）
+
+- 命令：`cd backend && mvn test -Dtest=AdminUserDetailTest,AdminReportsListTest,AdminAccountsListTest,SpaHostingTest`
+- 结果：**PASS** — Tests run: 22, Failures: 0（窄测；未打满 SQLPub 全量 `mvn test`）
+- 命令：`cd frontend && npm test`
+- 结果：**PASS** — Test Files 13 passed；Tests 75 passed
+- 勾选：tasks.md 6.1
+
+## §CMSNAV-6.2 — openspec validate
+
+- 命令：`openspec validate cms-nav-user-detail-reports --type change`
+- 结果：`Change 'cms-nav-user-detail-reports' is valid`
+- 勾选：tasks.md 6.2
+
+## §CMSNAV-6.3 — 不提交 git
 
 - 本实现会话未执行 `git commit` / `git push`
 - 勾选：tasks.md 6.3

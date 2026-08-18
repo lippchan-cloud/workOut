@@ -7,7 +7,11 @@ import { RecordFormPage, RecordPage, RecordTypePage } from "./pages/RecordPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { ProfileAccountPage, ProfileBodyPage, ProfilePage } from "./pages/ProfilePage";
 import { RecordDetailPage } from "./pages/RecordDetailPage";
+import { CmsLayout } from "./pages/CmsLayout";
+import { CmsOverviewPage } from "./pages/CmsOverviewPage";
 import { CmsPage } from "./pages/CmsPage";
+import { CmsReportsPage } from "./pages/CmsReportsPage";
+import { CmsUserDetailPage, CmsUserPickPage } from "./pages/CmsUserDetailPage";
 import { ReportPage } from "./pages/ReportPage";
 import { SharePage } from "./pages/SharePage";
 
@@ -17,7 +21,13 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/cms" element={<CmsPage />} />
+        <Route path="/cms" element={<CmsLayout />}>
+          <Route index element={<CmsOverviewPage />} />
+          <Route path="accounts" element={<CmsPage />} />
+          <Route path="users" element={<CmsUserPickPage />} />
+          <Route path="users/:userId" element={<CmsUserDetailPage />} />
+          <Route path="reports" element={<CmsReportsPage />} />
+        </Route>
         <Route path="/report/:id" element={<ReportPage />} />
         <Route
           path="/*"

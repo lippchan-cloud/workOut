@@ -4,7 +4,7 @@
 | --- | --- |
 | 产品名称 | workOut |
 | 文档类型 | 技术架构 |
-| 文档版本 | v1.3 |
+| 文档版本 | v1.4 |
 | 日期 | 2026-08-18 |
 | 依据 | [workOut-产品文档.md](./workOut-产品文档.md)、[workOut-功能文档.md](./workOut-功能文档.md)、`README.md` |
 | 实现规格 | OpenSpec [`init-workout-mvp`](../openspec/changes/init-workout-mvp/design.md)、[`phase-6-share-export-demo`](../openspec/changes/phase-6-share-export-demo/) |
@@ -135,6 +135,7 @@ flowchart LR
     C2["ProfileController"]
     C3["ShareReportController"]
     C4["PublicReportController"]
+    C5["AdminAccountController"]
   end
 
   subgraph Services
@@ -144,6 +145,7 @@ flowchart LR
     S3["XlsxExportWriter"]
     S4["ShareReportService"]
     S5["DemoDataSeeder"]
+    S6["AdminAccountService"]
   end
 
   subgraph Persistence
@@ -160,6 +162,11 @@ flowchart LR
   C2 --> S2
   C3 --> S4
   C4 --> S4
+  C5 --> S6
+  S6 --> T0
+  S6 --> T2
+  S6 --> T1
+  S6 --> T4
   S5 --> T0
   S0 --> T0
   S1 --> T1
@@ -194,6 +201,9 @@ flowchart LR
 | 公开报告 | GET | `/api/v1/reports/{id}` | 公开 |
 | 查询资料 | GET | `/api/v1/profile` | JWT |
 | 保存资料 | PUT | `/api/v1/profile` | JWT |
+| CMS 账户列表 | GET | `/api/v1/admin/accounts` | ADMIN JWT |
+| CMS 用户详情 | GET | `/api/v1/admin/accounts/{userId}` | ADMIN JWT |
+| CMS 已有分享 | GET | `/api/v1/admin/reports` | ADMIN JWT |
 
 ---
 
@@ -376,3 +386,4 @@ flowchart LR
 | §5.2～5.3 日历与导出 | 功能文档 §5；产品文档 §4.2 |
 | §5.4 资料 | 功能文档 §6；产品文档 §4.3 |
 | §5.5 启动 | 功能文档 §9 |
+| CMS | 功能文档 §6.4、§8.9～8.11；产品文档 §4.4 |
