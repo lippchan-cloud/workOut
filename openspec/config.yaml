@@ -1,0 +1,29 @@
+# Project context for OpenSpec artifact generation
+schema: spec-driven
+
+context: |
+  Product: workOut — personal daily training & diet logging (consume/intake).
+  Product docs live in doc/: workOut-产品文档.md, workOut-功能文档.md, workOut-技术架构.md (v1.1).
+  Tech stack: React SPA + Spring Boot monolith (static resources + API), MySQL utf8mb4, JWT auth.
+  Deploy: CLI one-command start (e.g. ./mvnw spring-boot:run), no microservices.
+  API: /api/v1/... camelCase path segments; POST body fields in `request`; response `{ code, msg, data }`.
+  Auth: username+password register/login; Bearer JWT; unauthenticated users see nav shell; clicking Tab or business actions redirects to /login?redirect=...
+  Data isolation: all business data scoped by userId from JWT (never trust client-supplied userId).
+  Colors: CONSUME green #16A34A, INTAKE red #DC2626.
+  Timezone: Asia/Shanghai. Week starts Monday.
+  Out of scope for MVP: email verify, password reset, OAuth, calorie calc, edit/delete records, BMI advice, social.
+  Development process: OpenSpec change artifacts first; implementation MUST follow TDD (failing test → green → refactor). Backend tests: JUnit 5 + Spring Boot Test / MockMvc. Frontend tests: Vitest + React Testing Library where applicable.
+
+rules:
+  proposal:
+    - Align with doc/ product and functional docs; do not invent P1 features
+    - Capabilities must map 1:1 to specs/<capability>/spec.md kebab-case names
+  specs:
+    - Every requirement MUST use SHALL/MUST and have at least one #### Scenario
+    - Scenarios should be directly mappable to automated tests (Given/When/Then)
+  design:
+    - Document package layout, table DDL sketch, JWT decision, and TDD strategy
+  tasks:
+    - Every implementation task MUST include a TDD cycle: write failing test, run fail, implement, run pass
+    - Prefer backend API/service tests first; UI tests for auth guard and critical pages
+    - No production code task without naming the test file/class

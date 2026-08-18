@@ -69,4 +69,3 @@ mysql -h mysql5.sqlpub.com -P 3310 -u user_lipp -p inv_doc
 
 - 本实例为公网免费节点，仅用于 workOut 开发与联调。
 - 连接失败时先确认实例状态为「正常」，再检查本机网络是否能访问 `mysql5.sqlpub.com:3310`。
-- 仓库若为公开仓库，请尽快改为私有，或轮换密码后改为本地配置注入，避免账号泄露。

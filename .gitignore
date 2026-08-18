@@ -1,0 +1,13 @@
+# IDE / editor
+.idea/
+.cursor/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local / secrets
+*.local
+application-local.yml
+.env
+.env.*
