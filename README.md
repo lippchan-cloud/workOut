@@ -33,14 +33,14 @@ cd frontend && npm install && npm run build:static
 cd ../backend && mvn spring-boot:run
 ```
 
-环境变量（勿把真实密码写入已提交的 `application.yml`）：
+数据库连接与 JWT 默认值已写入 `backend/src/main/resources/application.yml`（私有仓）。不设环境变量即可启动；下列变量仅为可选覆盖：
 
 | 变量 | 说明 |
 | --- | --- |
-| `WORKOUT_DB_URL` | JDBC URL，默认 `jdbc:mysql://localhost:3306/workout?...` |
-| `WORKOUT_DB_USER` | 数据库用户，默认 `root` |
-| `WORKOUT_DB_PASSWORD` | 数据库密码 |
-| `WORKOUT_JWT_SECRET` | JWT HMAC 密钥（生产必须覆盖） |
+| `WORKOUT_DB_URL` | 可选，覆盖 JDBC URL |
+| `WORKOUT_DB_USER` | 可选，覆盖数据库用户 |
+| `WORKOUT_DB_PASSWORD` | 可选，覆盖数据库密码 |
+| `WORKOUT_JWT_SECRET` | 可选，覆盖 JWT HMAC 密钥 |
 
 ## 测试命令
 
@@ -55,7 +55,7 @@ cd frontend && npm test
 - [产品文档](doc/workOut-产品文档.md)
 - [功能文档](doc/workOut-功能文档.md)
 - [技术架构](doc/workOut-技术架构.md)
-- 数据库连接说明见 [doc/workOut-数据库连接.md](./doc/workOut-数据库连接.md)（含本地密钥，**不要**复制进已提交配置）
+- 数据库连接说明见 [doc/workOut-数据库连接.md](./doc/workOut-数据库连接.md)（私有仓，默认已写入 `application.yml`）
 - [验收记录](doc/验收记录.md)（T00–T13）
 
 ## OpenSpec + TDD
