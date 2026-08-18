@@ -4,3 +4,8 @@
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/test/java/com/workout/auth/JwtAuthFilterTest.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/test/java/com/workout/common/ApiResponseEnvelopeTest.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/test/java/com/workout/common/SpaHostingTest.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/test/java/com/workout/profile/ProfileUpsertTest.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/test/java/com/workout/record/CsvExportTest.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/test/java/com/workout/record/DailyRecordCreateTest.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/test/java/com/workout/record/DailyRecordIsolationTest.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/test/java/com/workout/record/DailyRecordQueryTest.java

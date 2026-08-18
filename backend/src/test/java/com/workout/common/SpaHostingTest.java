@@ -1,7 +1,9 @@
 package com.workout.common;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -21,17 +23,24 @@ class SpaHostingTest {
     private MockMvc mockMvc;
 
     @Test
-    void rootShouldReturnHtml() throws Exception {
+    void rootShouldServeSpaIndex() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML));
+                .andExpect(forwardedUrl("index.html"));
     }
 
     @Test
-    void calendarDeepLinkShouldReturnSpaHtmlNotApi404() throws Exception {
+    void calendarDeepLinkShouldForwardToSpaHtmlNotApi404() throws Exception {
         mockMvc.perform(get("/calendar"))
                 .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/index.html"));
+    }
+
+    @Test
+    void indexHtmlShouldBeHtmlContainingWorkOut() throws Exception {
+        mockMvc.perform(get("/index.html"))
+                .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("workOut")));
+                .andExpect(content().string(containsString("workOut")));
     }
 }

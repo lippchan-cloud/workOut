@@ -4,6 +4,7 @@
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/AuthPrincipal.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/AuthService.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/AuthTokenResponse.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/CurrentUser.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/JwtAuthFilter.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/JwtProperties.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/JwtService.java
@@ -19,3 +20,17 @@
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/common/UnauthorizedException.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/config/JsonAuthEntryPoint.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/config/SecurityConfig.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/config/SpaFallbackController.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/profile/ProfileController.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/profile/ProfileEntity.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/profile/ProfileRepository.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/profile/ProfileRequest.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/profile/ProfileResponse.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/profile/ProfileService.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/record/CreateDailyRecordRequest.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/record/DailyRecordController.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/record/DailyRecordEntity.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/record/DailyRecordRepository.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/record/DailyRecordResponse.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/record/DailyRecordService.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/record/RecordType.java

@@ -21,12 +21,42 @@ mysql，mysql，连接信息见 [doc/workOut-数据库连接.md](./doc/workOut-�
 JWT
 
 ## 启动方式
-前后端不分离，用户可以cli启动
+
+前后端不分离：先把前端构建产物复制到 Spring 静态目录，再启动后端（默认端口 `8080`）。
+
+```bash
+# 方式 A：一键脚本
+./scripts/start.sh
+
+# 方式 B：分步
+cd frontend && npm install && npm run build:static
+cd ../backend && mvn spring-boot:run
+```
+
+环境变量（勿把真实密码写入已提交的 `application.yml`）：
+
+| 变量 | 说明 |
+| --- | --- |
+| `WORKOUT_DB_URL` | JDBC URL，默认 `jdbc:mysql://localhost:3306/workout?...` |
+| `WORKOUT_DB_USER` | 数据库用户，默认 `root` |
+| `WORKOUT_DB_PASSWORD` | 数据库密码 |
+| `WORKOUT_JWT_SECRET` | JWT HMAC 密钥（生产必须覆盖） |
+
+## 测试命令
+
+```bash
+cd backend && mvn test
+cd frontend && npm test
+```
+
+窄测示例：`cd backend && mvn -q test -Dtest=AuthLoginTest`
 
 ## 文档
 - [产品文档](doc/workOut-产品文档.md)
 - [功能文档](doc/workOut-功能文档.md)
 - [技术架构](doc/workOut-技术架构.md)
+- 数据库连接说明见 [doc/workOut-数据库连接.md](./doc/workOut-数据库连接.md)（含本地密钥，**不要**复制进已提交配置）
+- [验收记录](doc/验收记录.md)（T00–T13）
 
 ## OpenSpec + TDD
 - 变更：[`openspec/changes/init-workout-mvp`](openspec/changes/init-workout-mvp/proposal.md)

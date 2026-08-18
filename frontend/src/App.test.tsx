@@ -10,6 +10,6 @@ describe("App bootstrap", () => {
         <App />
       </MemoryRouter>,
     );
-    expect(screen.getByText("workOut")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "记录" })).toBeInTheDocument();
   });
 });
