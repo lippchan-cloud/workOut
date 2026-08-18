@@ -58,6 +58,27 @@ class SpaHostingTest {
     }
 
     @Test
+    void cmsAccountsDeepLinkShouldForwardToSpa() throws Exception {
+        mockMvc.perform(get("/cms/accounts"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/index.html"));
+    }
+
+    @Test
+    void cmsReportsDeepLinkShouldForwardToSpa() throws Exception {
+        mockMvc.perform(get("/cms/reports"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/index.html"));
+    }
+
+    @Test
+    void cmsUserDetailDeepLinkShouldForwardToSpa() throws Exception {
+        mockMvc.perform(get("/cms/users/1"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/index.html"));
+    }
+
+    @Test
     void indexHtmlShouldBeHtmlContainingWorkOut() throws Exception {
         mockMvc.perform(get("/index.html"))
                 .andExpect(status().isOk())

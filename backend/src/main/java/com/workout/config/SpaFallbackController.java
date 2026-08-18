@@ -27,6 +27,7 @@ public class SpaFallbackController {
         "/record",
         "/record/**",
         "/cms",
+        "/cms/**",
         "/report",
         "/report/**"
     })

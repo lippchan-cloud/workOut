@@ -1,5 +1,6 @@
 package com.workout.modules.share.infrastructure;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -18,4 +19,14 @@ public interface ShareReportRepository extends JpaRepository<ShareReportEntity, 
      * 注销时按用户批量删除分享，禁止循环 deleteById。
      */
     void deleteByUserId(Long userId);
+
+    /**
+     * CMS 详情：一次列出该用户全部已有分享，按创建时间倒序。
+     */
+    List<ShareReportEntity> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    /**
+     * CMS 报告列表：一次列出全部已有分享，按创建时间倒序，禁止循环单查。
+     */
+    List<ShareReportEntity> findAllByOrderByCreatedAtDesc();
 }

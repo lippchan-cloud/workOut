@@ -33,4 +33,14 @@ public interface DailyRecordRepository extends JpaRepository<DailyRecordEntity, 
      */
     @Query("select r.recordedAt from DailyRecordEntity r where r.userId = :userId and r.deleted = false")
     List<Instant> findRecordedAtByUserIdAndDeletedFalse(@Param("userId") Long userId);
+
+    /**
+     * CMS 详情：一次统计该用户未删除记录条数。
+     */
+    long countByUserIdAndDeletedFalse(Long userId);
+
+    /**
+     * CMS 详情：一次取出最近 5 条未删除记录，禁止循环单查。
+     */
+    List<DailyRecordEntity> findTop5ByUserIdAndDeletedFalseOrderByRecordedAtDescIdDesc(Long userId);
 }
