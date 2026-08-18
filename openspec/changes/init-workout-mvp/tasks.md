@@ -14,7 +14,7 @@
 
 - [x] 1.1 创建 `backend/` Spring Boot 3.x Maven 工程骨架与 `WorkOutApplication`；添加依赖：Web、Validation、JPA、Security、Flyway、JWT（jjwt）、Testcontainers（或约定 H2 test profile）
 - [x] 1.2 **TDD** 写失败测试 `FlywayMigrationTest`（或 `SchemaSmokeTest`）：断言表 `user` / `daily_record` / `profile` 存在 → 添加 Flyway `V1__init.sql`（含 `user_id` FK/索引、utf8mb4）→ 测试转绿
-- [ ] 1.3 创建 `frontend/` Vite + React + TypeScript + React Router；配置 Vitest + Testing Library
+- [x] 1.3 创建 `frontend/` Vite + React + TypeScript + React Router；配置 Vitest + Testing Library
 - [ ] 1.4 配置前端 build 产物复制到 `backend/src/main/resources/static`（插件或脚本）；文档化 CLI：`./mvnw spring-boot:run`（或根目录包装脚本）
 - [ ] 1.5 **TDD** 写失败测试 `SpaHostingTest`：`GET /` 返回 HTML；`GET /calendar` 不 404 到错误 API → 实现静态托管与 SPA fallback → 转绿
 - [x] 1.6 统一响应体 `ApiResponse`、异常处理（400/401/500）、`requestId`/`timestamp`；用一个最小 MockMvc 测试锁定 envelope 形状
@@ -22,8 +22,8 @@
 ## 2. User Auth（后端优先）
 
 - [x] 2.1 **TDD** `AuthRegisterTest`：注册成功返回 token；重复用户名 400；非法密码 400 → 实现 `POST /api/v1/auth/register` + BCrypt → 转绿
-- [ ] 2.2 **TDD** `AuthLoginTest`：正确密码返回 token；错误密码通用中文错误且无 token → 实现 `POST /api/v1/auth/login` → 转绿
-- [ ] 2.3 **TDD** `JwtAuthFilterTest`：无 Token 访问受保护桩接口 401；有效 Token 200；`/api/v1/auth/**` 放行 → 实现 JWT 签发/解析与 Security 配置 → 转绿
+- [x] 2.2 **TDD** `AuthLoginTest`：正确密码返回 token；错误密码通用中文错误且无 token → 实现 `POST /api/v1/auth/login` → 转绿
+- [x] 2.3 **TDD** `JwtAuthFilterTest`：无 Token 访问受保护桩接口 401；有效 Token 200；`/api/v1/auth/**` 放行 → 实现 JWT 签发/解析与 Security 配置 → 转绿
 - [ ] 2.4 **TDD** 前端 `authRedirect.test.tsx`：无 token 点击日历 Tab → 进入 `/login?redirect=/calendar` → 实现 AuthContext + 守卫 → 转绿
 - [ ] 2.5 实现 `/login`、`/register` 页面与 API client（存 `localStorage`）；**TDD** 登录表单校验空用户名提示；401 拦截清 token 跳转登录
 

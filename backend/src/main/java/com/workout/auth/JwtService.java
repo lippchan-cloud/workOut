@@ -56,6 +56,25 @@ public class JwtService {
     }
 
     /**
+     * 校验签名并解析出当前用户主体。
+     *
+     * @param token 紧凑 JWT（不含 Bearer 前缀）
+     * @return 已认证主体
+     */
+    public AuthPrincipal parseToken(String token) {
+        // 关键入口：只打 token 前缀，禁止打印完整 Token
+        log.info("[鉴权JWT] parseToken start tokenPrefix={}", tokenPrefix(token));
+        SecretKey key = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
+        var claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+        Number uid = claims.get("uid", Number.class);
+        String username = claims.getSubject();
+        AuthPrincipal principal = new AuthPrincipal(uid.longValue(), username);
+        // 关键实体：解析出的用户标识
+        log.info("[鉴权JWT] parseToken done userId={}, username={}", principal.getUserId(), principal.getUsername());
+        return principal;
+    }
+
+    /**
      * 截断 token 用于日志脱敏。
      */
     private String tokenPrefix(String token) {

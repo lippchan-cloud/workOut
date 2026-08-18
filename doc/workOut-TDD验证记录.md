@@ -20,6 +20,9 @@
 | 1.2 | Flyway 表结构 | 已证 | 已证 | §1.2 | 是 |
 | 1.6 | ApiResponse 信封 | 已证 | 已证 | §1.6 | 是 |
 | 2.1 | Auth 注册 | 已证 | 已证 | §2.1 | 是 |
+| 2.2 | Auth 登录 | 已证 | 已证 | §2.2 | 是 |
+| 2.3 | JWT 过滤器 | 已证 | 已证 | §2.3 | 是 |
+| 1.3 | Frontend 脚手架 | N/A（脚手架） | Vitest + build 通过 | §1.3 | 是 |
 | 其余 | — | 未开始 | 未开始 | — | 否 |
 
 ---
@@ -93,3 +96,56 @@
 ### 勾选
 
 - `tasks.md` 2.1 可勾选
+
+---
+
+## §2.2 — AuthLoginTest
+
+- 对应规格：`user-auth` — 登录成功 / 错误密码通用中文错误且无 token
+- 测试类：`backend/src/test/java/com/workout/auth/AuthLoginTest.java`
+
+### RED
+
+- 命令：`cd backend && mvn -q test -Dtest=AuthLoginTest`
+- 结果：**FAIL**（3 tests）
+- 失败原因摘要：`POST /api/v1/auth/login` 尚未实现；Status expected 200/400 but was **404**（`NoResourceFoundException`）
+
+### GREEN
+
+- 实现：`LoginRequest`；`AuthController.login`；`AuthService.login`（用户不存在与密码错误同一文案「用户名或密码错误」，不打印密码）
+- 命令：`cd backend && mvn -q test -Dtest=AuthLoginTest`
+- 结果：**PASS** — Tests run: 3, Failures: 0
+- 勾选：tasks.md 2.2
+
+---
+
+## §2.3 — JwtAuthFilterTest
+
+- 对应规格：`user-auth` — 业务 API 需 Bearer JWT；`/api/v1/auth/**` 放行
+- 测试类：`backend/src/test/java/com/workout/auth/JwtAuthFilterTest.java`
+
+### RED
+
+- 命令：`cd backend && mvn -q test -Dtest=JwtAuthFilterTest`
+- 结果：**FAIL**（2 failures / 1 pass）
+- 失败原因摘要：`GET /api/v1/secure/ping` 未实现且 Security 仍 `permitAll`；无 Token/有效 Token 均为 **404**（expected 401/200）
+
+### GREEN
+
+- 实现：`JwtAuthFilter`、`JwtService.parseToken`、`AuthPrincipal`、`JsonAuthEntryPoint`、`SecurePingController`；`SecurityConfig` 收紧为 `/api/v1/auth/**` 与 `/api/v1/health` 放行、其余 `/api/v1/**` 需认证
+- 命令：`cd backend && mvn -q test -Dtest=JwtAuthFilterTest,AuthLoginTest,AuthRegisterTest,ApiResponseEnvelopeTest`
+- 结果：**PASS** — Tests run: 10, Failures: 0（exit 0）
+- 勾选：tasks.md 2.3
+
+---
+
+## §1.3 — Frontend Vite 脚手架（非行为 TDD）
+
+- 对应：`openspec/.../tasks.md` 1.3
+- 说明：创建 `frontend/` Vite + React + TypeScript + React Router；Vitest + Testing Library；冒烟 `App.test.tsx`
+- 验证：`cd frontend && npm test` → Tests 1 passed；`npm run build` 成功产出 `dist/`
+- 备注：脚手架本身无 Scenario 断言；鉴权守卫/页面行为由后续 2.4+ TDD 驱动
+
+### 勾选
+
+- `tasks.md` 1.3 可勾选

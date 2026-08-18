@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 认证应用服务（应用层）。
- * 负责注册编排：唯一性校验、密码哈希、落库、签发 JWT；不暴露仓储细节给 Controller。
+ * 负责注册与登录编排：唯一性校验、密码哈希核对、落库、签发 JWT；不暴露仓储细节给 Controller。
  */
 @Service
 public class AuthService {
@@ -65,5 +65,34 @@ public class AuthService {
                 saved.getId(),
                 System.currentTimeMillis() - startMs);
         return new AuthTokenResponse(token, saved.getId(), saved.getUsername());
+    }
+
+    /**
+     * 校验用户名与密码并签发 Token。
+     * 用户不存在与密码错误使用同一文案，避免泄露账号是否已注册。
+     *
+     * @param username 登录名
+     * @param rawPassword 明文密码（不会落库）
+     * @return token 与用户标识
+     */
+    public AuthTokenResponse login(String username, String rawPassword) {
+        long startMs = System.currentTimeMillis();
+        // 关键入口：只记录用户名，禁止打印明文密码
+        log.info("[鉴权登录] login start username={}", username);
+        // 按用户名加载用户；找不到与密码错误走同一失败文案
+        UserEntity user = userRepository.findByUsername(username).orElse(null);
+        if (user == null || !passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
+            log.error("[鉴权登录] login failed code=400 msg=用户名或密码错误 username={}", username);
+            throw new BusinessException("用户名或密码错误");
+        }
+        // 关键实体：核对通过后的用户标识
+        log.info("[鉴权登录] loaded entityType=UserEntity id={}, username={}", user.getId(), user.getUsername());
+        // 登录成功签发 JWT
+        String token = jwtService.issueToken(user.getId(), user.getUsername());
+        log.info(
+                "[鉴权登录] login done success=true userId={}, elapsedMs={}",
+                user.getId(),
+                System.currentTimeMillis() - startMs);
+        return new AuthTokenResponse(token, user.getId(), user.getUsername());
     }
 }

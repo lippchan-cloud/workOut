@@ -1,11 +1,15 @@
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/WorkOutApplication.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/ApiRequest.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/AuthController.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/AuthPrincipal.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/AuthService.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/AuthTokenResponse.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/JwtAuthFilter.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/JwtProperties.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/JwtService.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/LoginRequest.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/RegisterRequest.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/SecurePingController.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/UserEntity.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/auth/UserRepository.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/common/ApiResponse.java
@@ -13,4 +17,5 @@
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/common/GlobalExceptionHandler.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/common/HealthController.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/common/UnauthorizedException.java
+/Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/config/JsonAuthEntryPoint.java
 /Users/lipp/dirs/project/jhjy/workOut/backend/src/main/java/com/workout/config/SecurityConfig.java

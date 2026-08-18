@@ -42,4 +42,19 @@ public class AuthController {
         log.info("[鉴权注册] AuthController.register done userId={}, username={}", data.getUserId(), data.getUsername());
         return ApiResponse.ok(data);
     }
+
+    /**
+     * 用户登录：校验通过后返回 JWT。
+     */
+    @PostMapping("/login")
+    public ApiResponse<AuthTokenResponse> login(@Valid @RequestBody ApiRequest<LoginRequest> body) {
+        LoginRequest request = body.getRequest();
+        // 关键入口：只记录用户名，不记录密码
+        log.info("[鉴权登录] AuthController.login start username={}", request.getUsername());
+        // 委托应用服务核对哈希并签发 Token
+        AuthTokenResponse data = authService.login(request.getUsername(), request.getPassword());
+        // 关键实体：登录成功后的用户标识
+        log.info("[鉴权登录] AuthController.login done userId={}, username={}", data.getUserId(), data.getUsername());
+        return ApiResponse.ok(data);
+    }
 }

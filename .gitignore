@@ -11,3 +11,10 @@ Thumbs.db
 application-local.yml
 .env
 .env.*
+
+# Java / Maven
+backend/target/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
