@@ -4,7 +4,7 @@ spring:
   datasource:
     url: ${WORKOUT_DB_URL:jdbc:mysql://mysql5.sqlpub.com:3310/inv_doc?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai}
     username: ${WORKOUT_DB_USER:user_lipp}
-    password: ${WORKOUT_DB_PASSWORD:pgGSlfNr1pSJbcq1}
+    password: ${WORKOUT_DB_PASSWORD:pgGJlfNr1pSJbcq1}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -16,6 +16,10 @@ spring:
           time_zone: Asia/Shanghai
   flyway:
     enabled: true
+    # inv_doc 为共享库、已有其它表但无 flyway_schema_history：先 baseline，再只跑 V2（创建/重命名 work_out_*）
+    baseline-on-migrate: true
+    baseline-version: 1
+    baseline-description: Shared inv_doc schema already has other tables
   jackson:
     time-zone: Asia/Shanghai
 

@@ -20,7 +20,7 @@
 | Port | `3310` |
 | 数据库名称 | `inv_doc` |
 | 数据库账号 | `user_lipp` |
-| 密码 | `pgGSlfNr1pSJbcq1` |
+| 密码 | `pgGJlfNr1pSJbcq1` |
 | 数据库版本 | MySQL 8.0.40 |
 | 数据库状态 | 正常 |
 | 节点区域 | 中国 |
@@ -45,14 +45,14 @@ spring:
   datasource:
     url: jdbc:mysql://mysql5.sqlpub.com:3310/inv_doc?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
     username: user_lipp
-    password: pgGSlfNr1pSJbcq1
+    password: pgGJlfNr1pSJbcq1
     driver-class-name: com.mysql.cj.jdbc.Driver
 ```
 
 ### 2.2 MySQL URI
 
 ```text
-mysql://user_lipp:pgGSlfNr1pSJbcq1@mysql5.sqlpub.com:3310/inv_doc
+mysql://user_lipp:pgGJlfNr1pSJbcq1@mysql5.sqlpub.com:3310/inv_doc
 ```
 
 ### 2.3 命令行
@@ -61,7 +61,7 @@ mysql://user_lipp:pgGSlfNr1pSJbcq1@mysql5.sqlpub.com:3310/inv_doc
 mysql -h mysql5.sqlpub.com -P 3310 -u user_lipp -p inv_doc
 ```
 
-执行后按提示输入密码：`pgGSlfNr1pSJbcq1`。
+执行后按提示输入密码：`pgGJlfNr1pSJbcq1`。
 
 ---
 
@@ -69,3 +69,4 @@ mysql -h mysql5.sqlpub.com -P 3310 -u user_lipp -p inv_doc
 
 - 本实例为公网免费节点，仅用于 workOut 开发与联调。
 - 连接失败时先确认实例状态为「正常」，再检查本机网络是否能访问 `mysql5.sqlpub.com:3310`。
+- `inv_doc` 为共享库（可能已有其它业务表）。应用启用 Flyway `baseline-on-migrate` + `baseline-version: 1`：不重复执行 V1，启动时执行 V2 创建/重命名 `work_out_*` 表。
