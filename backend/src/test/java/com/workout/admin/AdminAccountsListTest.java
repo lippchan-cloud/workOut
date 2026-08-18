@@ -9,10 +9,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.workout.config.AdminProperties;
 import com.workout.support.TestUsernames;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -33,44 +35,84 @@ class AdminAccountsListTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private AdminProperties adminProperties;
+
+    @AfterEach
+    void resetAdminBootstrap() {
+        adminProperties.setUsernames("");
+    }
+
     @Test
-    void listAccountsWithoutTokenShouldIncludeRegisteredUserAndProfile() throws Exception {
-        String username = TestUsernames.unique("cms_alice");
-        String token = register(username, "secret12");
+    void listAccountsWithoutTokenShouldReturn401() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/accounts"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
+    }
+
+    @Test
+    void regularUserJwtCannotListAccounts() throws Exception {
+        String username = TestUsernames.unique("cms_user");
+        JsonNode data = register(username, "secret12");
+        assertThat(data.path("role").asText()).isEqualTo("USER");
+
+        mockMvc.perform(get("/api/v1/admin/accounts")
+                        .header("Authorization", "Bearer " + data.path("token").asText()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403));
+    }
+
+    @Test
+    void bootstrapAdminJwtCanListAccountsWithProfile() throws Exception {
+        String adminName = TestUsernames.unique("p2adm");
+        adminProperties.setUsernames(adminName);
+        JsonNode adminData = register(adminName, "secret12");
+        assertThat(adminData.path("role").asText()).isEqualTo("ADMIN");
+
+        String alice = TestUsernames.unique("cms_alice");
+        JsonNode aliceData = register(alice, "secret12");
         mockMvc.perform(put("/api/v1/profile")
-                        .header("Authorization", "Bearer " + token)
+                        .header("Authorization", "Bearer " + aliceData.path("token").asText())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(profileBody("阿丽", 165.0, 52.0)))
                 .andExpect(status().isOk());
 
-        MvcResult result = mockMvc.perform(get("/api/v1/admin/accounts"))
+        MvcResult result = mockMvc.perform(get("/api/v1/admin/accounts")
+                        .header("Authorization", "Bearer " + adminData.path("token").asText()))
                 .andExpect(status().isOk())
                 .andReturn();
         String body = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
         JsonNode root = objectMapper.readTree(body);
         assertThat(root.path("code").asInt()).isEqualTo(200);
-        JsonNode item = findAccount(root.path("data").path("list"), username);
+        JsonNode item = findAccount(root.path("data").path("list"), alice);
         assertThat(item.path("userId").isNumber()).isTrue();
-        assertThat(item.path("username").asText()).isEqualTo(username);
+        assertThat(item.path("username").asText()).isEqualTo(alice);
         assertThat(item.path("createdAt").asText()).isNotBlank();
         assertThat(item.path("nickname").asText()).isEqualTo("阿丽");
         assertThat(item.path("heightCm").asDouble()).isEqualTo(165.0);
         assertThat(item.path("weightKg").asDouble()).isEqualTo(52.0);
+        assertThat(item.path("role").asText()).isIn("USER", "ADMIN");
         assertThat(body).doesNotContain("passwordHash");
         assertThat(body).doesNotContain("\"password\"");
     }
 
     @Test
     void accountWithoutProfileShouldHaveNullProfileFields() throws Exception {
-        String username = TestUsernames.unique("cms_bob");
-        register(username, "secret12");
+        String adminName = TestUsernames.unique("p2adm2");
+        adminProperties.setUsernames(adminName);
+        JsonNode adminData = register(adminName, "secret12");
+        String bob = TestUsernames.unique("cms_bob");
+        register(bob, "secret12");
 
-        MvcResult result = mockMvc.perform(get("/api/v1/admin/accounts"))
+        MvcResult result = mockMvc.perform(get("/api/v1/admin/accounts")
+                        .header("Authorization", "Bearer " + adminData.path("token").asText()))
                 .andExpect(status().isOk())
                 .andReturn();
         JsonNode item = findAccount(
-                objectMapper.readTree(result.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data").path("list"),
-                username);
+                objectMapper.readTree(result.getResponse().getContentAsString(StandardCharsets.UTF_8))
+                        .path("data")
+                        .path("list"),
+                bob);
         assertThat(item.path("nickname").isNull()).isTrue();
         assertThat(item.path("heightCm").isNull()).isTrue();
         assertThat(item.path("weightKg").isNull()).isTrue();
@@ -108,13 +150,13 @@ class AdminAccountsListTest {
         return objectMapper.writeValueAsString(Map.of("request", inner));
     }
 
-    private String register(String username, String password) throws Exception {
+    private JsonNode register(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "request", Map.of("username", username, "password", password)))))
                 .andExpect(status().isOk())
                 .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("token").asText();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
     }
 }

@@ -15,4 +15,14 @@ public interface DailyRecordRepository extends JpaRepository<DailyRecordEntity, 
      */
     List<DailyRecordEntity> findByUserIdAndDeletedFalseAndRecordedAtGreaterThanEqualAndRecordedAtLessThanOrderByRecordedAtAscIdAsc(
             Long userId, Instant startInclusive, Instant endExclusive);
+
+    /**
+     * 按主键与用户加载未删除记录，一次查询完成隔离。
+     */
+    java.util.Optional<DailyRecordEntity> findByIdAndUserIdAndDeletedFalse(Long id, Long userId);
+
+    /**
+     * 按用户批量物理删除全部日记录（注销账号），禁止循环 deleteById。
+     */
+    void deleteByUserId(Long userId);
 }

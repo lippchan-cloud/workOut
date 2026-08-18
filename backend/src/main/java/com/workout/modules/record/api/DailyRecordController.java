@@ -17,8 +17,11 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -59,6 +62,36 @@ public class DailyRecordController {
         DailyRecordResponse data = dailyRecordService.create(principal.getUserId(), request);
         log.info("[日记录] DailyRecordController.create done id={}, userId={}", data.getId(), principal.getUserId());
         return ApiResponse.ok(data);
+    }
+
+    /**
+     * 更新当前用户自己的消耗/摄入记录。
+     */
+    @PutMapping("/{id}")
+    public ApiResponse<DailyRecordResponse> update(
+            @PathVariable Long id, @Valid @RequestBody ApiRequest<CreateDailyRecordRequest> body) {
+        AuthPrincipal principal = CurrentUser.require();
+        CreateDailyRecordRequest request = body.getRequest();
+        log.info(
+                "[日记录] DailyRecordController.update start userId={}, id={}, type={}",
+                principal.getUserId(),
+                id,
+                request.getType());
+        DailyRecordResponse data = dailyRecordService.update(principal.getUserId(), id, request);
+        log.info("[日记录] DailyRecordController.update done id={}, userId={}", data.getId(), principal.getUserId());
+        return ApiResponse.ok(data);
+    }
+
+    /**
+     * 删除当前用户自己的记录（逻辑删除）。
+     */
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        AuthPrincipal principal = CurrentUser.require();
+        log.info("[日记录] DailyRecordController.delete start userId={}, id={}", principal.getUserId(), id);
+        dailyRecordService.delete(principal.getUserId(), id);
+        log.info("[日记录] DailyRecordController.delete done id={}, userId={}", id, principal.getUserId());
+        return ApiResponse.ok(null);
     }
 
     /**

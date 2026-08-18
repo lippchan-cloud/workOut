@@ -57,4 +57,44 @@ describe("ProfilePage", () => {
     await user.click(screen.getByRole("button", { name: "退出登录" }));
     expect(localStorage.getItem("workout_token")).toBeNull();
   });
+
+  it("separates account and body sections and shows password change", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ code: 200, data: { nickname: null, heightCm: null, weightKg: null } }),
+      }),
+    );
+    render(
+      <MemoryRouter initialEntries={["/profile"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole("heading", { name: "账号" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "身体数据" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "修改密码" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "保存资料" })).toBeInTheDocument();
+  });
+
+  it("requires confirmation before deleting account", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ code: 200, data: { nickname: null, heightCm: null, weightKg: null } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/profile"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    await user.click(await screen.findByRole("button", { name: "注销账号" }));
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some((call) => call[1]?.method === "DELETE")).toBe(false);
+    confirmSpy.mockRestore();
+  });
 });

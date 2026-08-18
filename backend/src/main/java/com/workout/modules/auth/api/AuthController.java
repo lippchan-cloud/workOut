@@ -3,10 +3,13 @@ package com.workout.modules.auth.api;
 import com.workout.common.ApiRequest;
 import com.workout.common.ApiResponse;
 import com.workout.modules.auth.application.AuthService;
+import com.workout.modules.auth.domain.AuthPrincipal;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -58,5 +61,30 @@ public class AuthController {
         // 关键实体：登录成功后的用户标识
         log.info("[鉴权登录] AuthController.login done userId={}, username={}", data.getUserId(), data.getUsername());
         return ApiResponse.ok(data);
+    }
+
+    /**
+     * 修改当前用户密码。
+     */
+    @PutMapping("/password")
+    public ApiResponse<Void> changePassword(@Valid @RequestBody ApiRequest<ChangePasswordRequest> body) {
+        AuthPrincipal principal = CurrentUser.require();
+        ChangePasswordRequest request = body.getRequest();
+        log.info("[鉴权改密] AuthController.changePassword start userId={}", principal.getUserId());
+        authService.changePassword(principal.getUserId(), request.getCurrentPassword(), request.getNewPassword());
+        log.info("[鉴权改密] AuthController.changePassword done userId={}", principal.getUserId());
+        return ApiResponse.ok(null);
+    }
+
+    /**
+     * 注销当前账号并删除本人数据。
+     */
+    @DeleteMapping("/me")
+    public ApiResponse<Void> deleteMe() {
+        AuthPrincipal principal = CurrentUser.require();
+        log.info("[鉴权注销] AuthController.deleteMe start userId={}", principal.getUserId());
+        authService.deleteMe(principal.getUserId());
+        log.info("[鉴权注销] AuthController.deleteMe done userId={}", principal.getUserId());
+        return ApiResponse.ok(null);
     }
 }

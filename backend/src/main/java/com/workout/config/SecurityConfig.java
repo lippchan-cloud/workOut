@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,10 +17,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * 安全与密码编码配置（配置层）。
  * 注册/登录与健康检查放行；其余 /api/v1/** 必须携带有效 Bearer JWT。
- * TEMPORARY：第一阶段额外放行 GET /api/v1/admin/accounts（CMS 账户列表），后续必须加鉴权。
+ * CMS 账户列表不再公开放行，须 authenticated + 业务层 ADMIN 校验。
  */
 @Configuration
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, AdminProperties.class})
 public class SecurityConfig {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
@@ -38,8 +37,7 @@ public class SecurityConfig {
     }
 
     /**
-     * 配置无状态 JWT 链路：auth/health 公开，业务 API 需认证，SPA 路由放行。
-     * TEMPORARY：仅 GET /api/v1/admin/accounts 额外公开，不得扩大到其它业务 API。
+     * 配置无状态 JWT 链路：auth/health 公开，业务 API（含 CMS）需认证，SPA 路由放行。
      */
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -49,16 +47,16 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**", "/api/v1/health").permitAll()
-                        // TEMPORARY：CMS 账户列表第一阶段无密码；后续删除本行并加管理员鉴权
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/accounts").permitAll()
-                        .requestMatchers("/api/v1/**").authenticated()
-                        .anyRequest().permitAll())
+                        .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/health")
+                        .permitAll()
+                        .requestMatchers("/api/v1/**")
+                        .authenticated()
+                        .anyRequest()
+                        .permitAll())
                 .exceptionHandling(handling -> handling.authenticationEntryPoint(jsonAuthEntryPoint))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         SecurityFilterChain chain = http.build();
-        log.info(
-                "[安全配置] securityFilterChain done public=/api/v1/auth/**,/api/v1/health,GET /api/v1/admin/accounts(TEMPORARY)");
+        log.info("[安全配置] securityFilterChain done public=/api/v1/auth/register,/api/v1/auth/login,/api/v1/health");
         return chain;
     }
 }

@@ -135,4 +135,53 @@ describe("RecordPage", () => {
     await user.click(screen.getByRole("button", { name: "保存消耗" }));
     expect(await screen.findByTestId("location")).toHaveTextContent("/login?redirect=/record/consume");
   });
+
+  it("validates empty content immediately without calling create API", async () => {
+    localStorage.setItem("workout_token", "tok");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderRecordApp("/");
+    await openConsumeForm(user);
+    await user.click(screen.getByRole("button", { name: "保存消耗" }));
+    expect(screen.getByText("请填写内容")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("offers 再记一条 and 回日历 after successful save", async () => {
+    localStorage.setItem("workout_token", "tok");
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ code: 200, msg: "OK", data: { id: 1, type: "CONSUME" } }),
+      }),
+    );
+    renderRecordApp("/");
+    await openConsumeForm(user);
+    await user.type(screen.getByLabelText("消耗内容"), "跑步 30 分钟");
+    await user.click(screen.getByRole("button", { name: "保存消耗" }));
+    expect(await screen.findByRole("button", { name: "再记一条" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "回日历" })).toBeInTheDocument();
+  });
+
+  it("restores draft content after 401 save", async () => {
+    localStorage.setItem("workout_token", "stale");
+    sessionStorage.setItem(
+      "workout_record_draft",
+      JSON.stringify({ type: "CONSUME", content: "跑步", recordedAt: "2026-08-18T07:30", path: "/record/consume" }),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ code: 200, msg: "OK", data: { id: 1 } }),
+      }),
+    );
+    renderRecordApp("/record/consume");
+    expect(await screen.findByDisplayValue("跑步")).toBeInTheDocument();
+  });
 });

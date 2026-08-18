@@ -1,6 +1,7 @@
 package com.workout.modules.record.application;
 
 import com.workout.common.BusinessException;
+import com.workout.common.NotFoundException;
 import com.workout.modules.record.api.CreateDailyRecordRequest;
 import com.workout.modules.record.api.DailyRecordResponse;
 import com.workout.modules.record.domain.RecordQueryPeriod;
@@ -59,15 +60,7 @@ public class DailyRecordService {
                 request.getType(),
                 request.getContent() == null ? 0 : request.getContent().length(),
                 request.getRecordedAt());
-        String content = request.getContent() == null ? "" : request.getContent().trim();
-        if (content.isEmpty()) {
-            log.error("[日记录] create failed code=400 msg=请填写内容 userId={}", userId);
-            throw new BusinessException("请填写内容");
-        }
-        if (content.length() > MAX_CONTENT) {
-            log.error("[日记录] create failed code=400 msg=内容最多500字 userId={}", userId);
-            throw new BusinessException("内容最多500字");
-        }
+        String content = normalizeContent(userId, request.getContent());
 
         DailyRecordEntity entity = new DailyRecordEntity();
         entity.setUserId(userId);
@@ -84,6 +77,85 @@ public class DailyRecordService {
                 saved.getUserId(),
                 System.currentTimeMillis() - startMs);
         return DailyRecordResponse.from(saved);
+    }
+
+    /**
+     * 更新当前用户自己的日记录。
+     *
+     * @param userId  JWT 用户主键
+     * @param id      记录主键
+     * @param request 更新字段
+     * @return 更新后的记录
+     */
+    @Transactional
+    public DailyRecordResponse update(Long userId, Long id, CreateDailyRecordRequest request) {
+        long startMs = System.currentTimeMillis();
+        log.info(
+                "[日记录] update start userId={}, id={}, type={}, contentLen={}",
+                userId,
+                id,
+                request.getType(),
+                request.getContent() == null ? 0 : request.getContent().length());
+        DailyRecordEntity entity = requireOwned(userId, id);
+        String content = normalizeContent(userId, request.getContent());
+        entity.setType(request.getType());
+        entity.setContent(content);
+        entity.setRecordedAt(request.getRecordedAt());
+        DailyRecordEntity saved = dailyRecordRepository.save(entity);
+        log.info(
+                "[日记录] update done entityType=DailyRecordEntity id={}, userId={}, elapsedMs={}",
+                saved.getId(),
+                saved.getUserId(),
+                System.currentTimeMillis() - startMs);
+        return DailyRecordResponse.from(saved);
+    }
+
+    /**
+     * 逻辑删除当前用户自己的日记录。
+     *
+     * @param userId JWT 用户主键
+     * @param id     记录主键
+     */
+    @Transactional
+    public void delete(Long userId, Long id) {
+        long startMs = System.currentTimeMillis();
+        log.info("[日记录] delete start userId={}, id={}", userId, id);
+        DailyRecordEntity entity = requireOwned(userId, id);
+        entity.setDeleted(true);
+        dailyRecordRepository.save(entity);
+        log.info(
+                "[日记录] delete done entityType=DailyRecordEntity id={}, userId={}, deleted=true, elapsedMs={}",
+                entity.getId(),
+                entity.getUserId(),
+                System.currentTimeMillis() - startMs);
+    }
+
+    /**
+     * 按 id+userId 一次加载未删除记录；跨用户与缺失一律 404。
+     */
+    private DailyRecordEntity requireOwned(Long userId, Long id) {
+        return dailyRecordRepository
+                .findByIdAndUserIdAndDeletedFalse(id, userId)
+                .orElseThrow(() -> {
+                    log.error("[日记录] requireOwned failed code=404 userId={}, id={}", userId, id);
+                    return new NotFoundException("记录不存在");
+                });
+    }
+
+    /**
+     * 校验并修剪内容。
+     */
+    private String normalizeContent(Long userId, String raw) {
+        String content = raw == null ? "" : raw.trim();
+        if (content.isEmpty()) {
+            log.error("[日记录] validate failed code=400 msg=请填写内容 userId={}", userId);
+            throw new BusinessException("请填写内容");
+        }
+        if (content.length() > MAX_CONTENT) {
+            log.error("[日记录] validate failed code=400 msg=内容最多500字 userId={}", userId);
+            throw new BusinessException("内容最多500字");
+        }
+        return content;
     }
 
     /**

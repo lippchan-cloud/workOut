@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { apiGet, apiPut } from "../api/client";
+import { apiDelete, apiGet, apiPut } from "../api/client";
 
 type Profile = {
   nickname: string | null;
@@ -10,15 +10,18 @@ type Profile = {
 };
 
 /**
- * 「我的」资料页：回填、保存、退出登录。
+ * 「我的」资料页：账号区（改密/注销/退出）与身体数据分开。
  */
 export function ProfilePage() {
-  const { isAuthenticated, clearToken } = useAuth();
+  const { isAuthenticated, isAdmin, clearToken } = useAuth();
   const navigate = useNavigate();
   const [nickname, setNickname] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
   const [message, setMessage] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -42,7 +45,28 @@ export function ProfilePage() {
     setMessage("保存成功");
   };
 
+  const onChangePassword = async (event: FormEvent) => {
+    event.preventDefault();
+    setPasswordMessage("");
+    await apiPut("/api/v1/auth/password", {
+      currentPassword,
+      newPassword,
+    });
+    setCurrentPassword("");
+    setNewPassword("");
+    setPasswordMessage("密码已更新");
+  };
+
   const onLogout = () => {
+    clearToken();
+    navigate("/");
+  };
+
+  const onDeleteAccount = async () => {
+    if (!window.confirm("确认注销账号并删除本人全部数据？此操作不可恢复。")) {
+      return;
+    }
+    await apiDelete("/api/v1/auth/me");
     clearToken();
     navigate("/");
   };
@@ -51,9 +75,45 @@ export function ProfilePage() {
     <div className="page">
       <p className="page__eyebrow">Athlete</p>
       <h1 className="page__title">我的</h1>
-      <p className="page__subtitle">身体数据归档，保持轻量。</p>
+      <p className="page__subtitle">账号安全与身体数据分开归档。</p>
+
+      <section className="card stack">
+        <h2>账号</h2>
+        {isAdmin ? <Link to="/cms">后台管理</Link> : null}
+        <form onSubmit={onChangePassword}>
+          <label>
+            当前密码
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </label>
+          <label>
+            新密码
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+            />
+          </label>
+          <button type="submit" className="btn btn-primary btn-block">
+            修改密码
+          </button>
+          {passwordMessage ? <p className="flash">{passwordMessage}</p> : null}
+        </form>
+        <button type="button" className="btn btn-ghost btn-block" onClick={onLogout}>
+          退出登录
+        </button>
+        <button type="button" className="btn btn-ghost btn-block" onClick={onDeleteAccount}>
+          注销账号
+        </button>
+      </section>
 
       <form className="card" onSubmit={onSubmit}>
+        <h2>身体数据</h2>
         <label>
           昵称
           <input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="怎么称呼你" />
@@ -71,10 +131,6 @@ export function ProfilePage() {
         </button>
         {message ? <p className="flash">{message}</p> : null}
       </form>
-
-      <button type="button" className="btn btn-ghost btn-block" onClick={onLogout}>
-        退出登录
-      </button>
     </div>
   );
 }

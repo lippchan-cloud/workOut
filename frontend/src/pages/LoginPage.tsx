@@ -9,7 +9,7 @@ import { apiPost } from "../api/client";
 export function LoginPage() {
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get("redirect") || "/";
-  const { setToken } = useAuth();
+  const { setSession } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -23,11 +23,11 @@ export function LoginPage() {
     }
     setError("");
     try {
-      const data = await apiPost<{ token: string }>("/api/v1/auth/login", {
+      const data = await apiPost<{ token: string; role?: string }>("/api/v1/auth/login", {
         username: username.trim(),
         password,
       });
-      setToken(data.token);
+      setSession(data.token, data.role);
       navigate(redirect);
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败");
@@ -72,10 +72,6 @@ export function LoginPage() {
         </form>
         <p className="auth-card__footer">
           还没有账号？ <Link to="/register">去注册</Link>
-        </p>
-        <p className="auth-card__footer auth-card__cms">
-          <Link to="/cms">后台管理</Link>
-          <span> （临时开放，后续将加鉴权）</span>
         </p>
       </div>
     </div>

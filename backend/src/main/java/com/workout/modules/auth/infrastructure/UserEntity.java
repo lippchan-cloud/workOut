@@ -2,11 +2,14 @@ package com.workout.modules.auth.infrastructure;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import com.workout.modules.auth.domain.UserRole;
 
 /**
  * 注册用户持久化实体（基础设施/持久化层）。
@@ -28,6 +31,10 @@ public class UserEntity {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private UserRole role = UserRole.USER;
 
     /**
      * 主键。
@@ -83,5 +90,19 @@ public class UserEntity {
      */
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    /**
+     * 角色：USER 或 ADMIN。
+     */
+    public UserRole getRole() {
+        return role;
+    }
+
+    /**
+     * 设置角色。
+     */
+    public void setRole(UserRole role) {
+        this.role = role;
     }
 }

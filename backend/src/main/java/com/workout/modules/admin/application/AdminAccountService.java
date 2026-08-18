@@ -1,6 +1,8 @@
 package com.workout.modules.admin.application;
 
+import com.workout.common.ForbiddenException;
 import com.workout.modules.admin.api.AdminAccountResponse;
+import com.workout.modules.auth.domain.UserRole;
 import com.workout.modules.auth.infrastructure.UserEntity;
 import com.workout.modules.auth.infrastructure.UserRepository;
 import com.workout.modules.profile.infrastructure.ProfileEntity;
@@ -16,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 后台账户列表应用服务（应用层）。
- * 一次加载全部用户、一次按 userId 批量加载资料，禁止 N+1。
+ * 一次加载全部用户、一次按 userId 批量加载资料，禁止 N+1。CMS 调用方必须为 ADMIN。
  */
 @Service
 public class AdminAccountService {
@@ -35,13 +37,28 @@ public class AdminAccountService {
     }
 
     /**
-     * 列出全部账户及可见资料；不含密码哈希。
+     * 校验当前用户为 ADMIN 后列出全部账户及可见资料；不含密码哈希。
+     *
+     * @param operatorUserId JWT 中的当前用户主键
+     * @return 账户列表
      */
     @Transactional(readOnly = true)
-    public List<AdminAccountResponse> listAll() {
+    public List<AdminAccountResponse> listAll(Long operatorUserId) {
         long startMs = System.currentTimeMillis();
-        // 关键入口：CMS 全量列表，第一阶段无登录
-        log.info("[后台CMS] listAll start temporaryUnauthenticated=true");
+        log.info("[后台CMS] listAll start operatorUserId={}", operatorUserId);
+        // 按主键一次加载操作者，校验 ADMIN，禁止信任客户端角色
+        UserEntity operator = userRepository
+                .findById(operatorUserId)
+                .orElseThrow(() -> new ForbiddenException("无管理员权限"));
+        log.info(
+                "[后台CMS] loaded operator entityType=UserEntity id={}, username={}, role={}",
+                operator.getId(),
+                operator.getUsername(),
+                operator.getRole());
+        if (operator.getRole() != UserRole.ADMIN) {
+            log.error("[后台CMS] listAll denied code=403 operatorUserId={}, role={}", operatorUserId, operator.getRole());
+            throw new ForbiddenException("无管理员权限");
+        }
         // 一次查出全部用户，按创建时间倒序便于运营查看新注册
         List<UserEntity> users = userRepository.findAll(
                 Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
@@ -74,12 +91,13 @@ public class AdminAccountService {
     private AdminAccountResponse toResponse(UserEntity user, ProfileEntity profile) {
         if (profile == null) {
             return new AdminAccountResponse(
-                    user.getId(), user.getUsername(), user.getCreatedAt(), null, null, null);
+                    user.getId(), user.getUsername(), user.getCreatedAt(), user.getRole(), null, null, null);
         }
         return new AdminAccountResponse(
                 user.getId(),
                 user.getUsername(),
                 user.getCreatedAt(),
+                user.getRole(),
                 profile.getNickname(),
                 profile.getHeightCm(),
                 profile.getWeightKg());

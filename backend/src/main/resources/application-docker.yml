@@ -24,3 +24,5 @@ workout:
   jwt:
     secret: ${WORKOUT_JWT_SECRET:ZK++GivMTbpopIqjpEeQNjikcFBnSzu0iy+mYXPDlzkCQ4f7IW/99AcSIixVpXyC}
     expire-days: 7
+  admin:
+    usernames: ${WORKOUT_ADMIN_USERNAMES:lipp}

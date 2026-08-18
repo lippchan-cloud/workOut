@@ -6,7 +6,8 @@ type ApiEnvelope<T> = {
 
 function handleUnauthorized(): never {
   localStorage.removeItem("workout_token");
-  const redirect = encodeURIComponent(window.location.pathname || "/");
+  localStorage.removeItem("workout_role");
+  const redirect = encodeURIComponent(`${window.location.pathname || "/"}${window.location.search || ""}`);
   window.location.assign(`/login?redirect=${redirect}`);
   throw new Error("未登录或登录已过期");
 }
@@ -40,6 +41,27 @@ export async function apiPost<T>(path: string, request: unknown): Promise<T> {
 export async function apiGet<T>(path: string): Promise<T> {
   const token = localStorage.getItem("workout_token");
   const response = await fetch(path, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (response.status === 401) {
+    handleUnauthorized();
+  }
+  const body = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || body.code !== 200) {
+    throw new Error(body.msg || "请求失败");
+  }
+  return body.data;
+}
+
+/**
+ * 统一 DELETE；401 清 token 并跳转登录。
+ */
+export async function apiDelete<T>(path: string): Promise<T> {
+  const token = localStorage.getItem("workout_token");
+  const response = await fetch(path, {
+    method: "DELETE",
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },

@@ -7,7 +7,7 @@ import { apiPost } from "../api/client";
  * 注册页：成功后写入 token 并进入记录页。
  */
 export function RegisterPage() {
-  const { setToken } = useAuth();
+  const { setSession } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -21,11 +21,11 @@ export function RegisterPage() {
     }
     setError("");
     try {
-      const data = await apiPost<{ token: string }>("/api/v1/auth/register", {
+      const data = await apiPost<{ token: string; role?: string }>("/api/v1/auth/register", {
         username: username.trim(),
         password,
       });
-      setToken(data.token);
+      setSession(data.token, data.role);
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "注册失败");

@@ -30,3 +30,6 @@ workout:
   jwt:
     secret: ${WORKOUT_JWT_SECRET:ZK++GivMTbpopIqjpEeQNjikcFBnSzu0iy+mYXPDlzkCQ4f7IW/99AcSIixVpXyC}
     expire-days: 7
+  admin:
+    # 逗号分隔；注册或登录时提升为 ADMIN。私有仓可直接写用户名。
+    usernames: ${WORKOUT_ADMIN_USERNAMES:lipp}

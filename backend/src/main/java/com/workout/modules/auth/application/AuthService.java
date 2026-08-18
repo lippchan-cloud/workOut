@@ -1,10 +1,14 @@
 package com.workout.modules.auth.application;
 
 import com.workout.common.BusinessException;
+import com.workout.config.AdminProperties;
 import com.workout.modules.auth.api.AuthTokenResponse;
+import com.workout.modules.auth.domain.UserRole;
 import com.workout.modules.auth.infrastructure.JwtService;
 import com.workout.modules.auth.infrastructure.UserEntity;
 import com.workout.modules.auth.infrastructure.UserRepository;
+import com.workout.modules.profile.infrastructure.ProfileRepository;
+import com.workout.modules.record.infrastructure.DailyRecordRepository;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,14 +28,26 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AdminProperties adminProperties;
+    private final DailyRecordRepository dailyRecordRepository;
+    private final ProfileRepository profileRepository;
 
     /**
-     * 注入注册所需依赖。
+     * 注入注册、改密与注销所需依赖。
      */
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            AdminProperties adminProperties,
+            DailyRecordRepository dailyRecordRepository,
+            ProfileRepository profileRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.adminProperties = adminProperties;
+        this.dailyRecordRepository = dailyRecordRepository;
+        this.profileRepository = profileRepository;
     }
 
     /**
@@ -57,18 +73,25 @@ public class AuthService {
         // 明文转 BCrypt 哈希后再持久化
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
         user.setCreatedAt(Instant.now());
+        // 引导名单内的用户名提升为 ADMIN，其余默认 USER
+        user.setRole(resolveRole(user.getUsername()));
         // 写入用户行并回填自增主键
         UserEntity saved = userRepository.save(user);
-        // 关键实体：落库后的用户标识
-        log.info("[鉴权注册] saved entityType=UserEntity id={}, username={}", saved.getId(), saved.getUsername());
+        // 关键实体：落库后的用户标识与角色
+        log.info(
+                "[鉴权注册] saved entityType=UserEntity id={}, username={}, role={}",
+                saved.getId(),
+                saved.getUsername(),
+                saved.getRole());
 
         // 注册成功即发 JWT，避免再调一次登录
         String token = jwtService.issueToken(saved.getId(), saved.getUsername());
         log.info(
-                "[鉴权注册] register done success=true userId={}, elapsedMs={}",
+                "[鉴权注册] register done success=true userId={}, role={}, elapsedMs={}",
                 saved.getId(),
+                saved.getRole(),
                 System.currentTimeMillis() - startMs);
-        return new AuthTokenResponse(token, saved.getId(), saved.getUsername());
+        return new AuthTokenResponse(token, saved.getId(), saved.getUsername(), saved.getRole());
     }
 
     /**
@@ -79,6 +102,7 @@ public class AuthService {
      * @param rawPassword 明文密码（不会落库）
      * @return token 与用户标识
      */
+    @Transactional
     public AuthTokenResponse login(String username, String rawPassword) {
         long startMs = System.currentTimeMillis();
         // 关键入口：只记录用户名，禁止打印明文密码
@@ -90,13 +114,72 @@ public class AuthService {
             throw new BusinessException("用户名或密码错误");
         }
         // 关键实体：核对通过后的用户标识
-        log.info("[鉴权登录] loaded entityType=UserEntity id={}, username={}", user.getId(), user.getUsername());
+        log.info("[鉴权登录] loaded entityType=UserEntity id={}, username={}, role={}",
+                user.getId(), user.getUsername(), user.getRole());
+        // 登录时按引导名单纠偏角色，避免漏升管理员
+        UserRole resolved = resolveRole(user.getUsername());
+        if (resolved == UserRole.ADMIN && user.getRole() != UserRole.ADMIN) {
+            user.setRole(UserRole.ADMIN);
+            // 仅提升、不降级，登录后 CMS 立即生效
+            userRepository.save(user);
+            log.info("[鉴权登录] promoted entityType=UserEntity id={}, role={}", user.getId(), user.getRole());
+        }
         // 登录成功签发 JWT
         String token = jwtService.issueToken(user.getId(), user.getUsername());
         log.info(
-                "[鉴权登录] login done success=true userId={}, elapsedMs={}",
+                "[鉴权登录] login done success=true userId={}, role={}, elapsedMs={}",
                 user.getId(),
+                user.getRole(),
                 System.currentTimeMillis() - startMs);
-        return new AuthTokenResponse(token, user.getId(), user.getUsername());
+        return new AuthTokenResponse(token, user.getId(), user.getUsername(), user.getRole());
+    }
+
+    /**
+     * 校验当前密码后写入新哈希。
+     *
+     * @param userId          JWT 用户主键
+     * @param currentPassword 当前明文密码
+     * @param newPassword     新明文密码
+     */
+    @Transactional
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        long startMs = System.currentTimeMillis();
+        log.info("[鉴权改密] changePassword start userId={}", userId);
+        UserEntity user = userRepository.findById(userId).orElseThrow(() -> new BusinessException("用户名或密码错误"));
+        log.info("[鉴权改密] loaded entityType=UserEntity id={}, username={}", user.getId(), user.getUsername());
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            log.error("[鉴权改密] changePassword failed code=400 msg=当前密码不正确 userId={}", userId);
+            throw new BusinessException("当前密码不正确");
+        }
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info(
+                "[鉴权改密] changePassword done userId={}, elapsedMs={}", userId, System.currentTimeMillis() - startMs);
+    }
+
+    /**
+     * 注销当前用户：批量删除本人记录与资料后再删用户行。
+     *
+     * @param userId JWT 用户主键
+     */
+    @Transactional
+    public void deleteMe(Long userId) {
+        long startMs = System.currentTimeMillis();
+        log.info("[鉴权注销] deleteMe start userId={}", userId);
+        UserEntity user = userRepository.findById(userId).orElseThrow(() -> new BusinessException("用户不存在"));
+        log.info("[鉴权注销] loaded entityType=UserEntity id={}, username={}", user.getId(), user.getUsername());
+        // 先按 userId 批量删从属数据，禁止循环 deleteById
+        dailyRecordRepository.deleteByUserId(userId);
+        profileRepository.deleteByUserId(userId);
+        userRepository.delete(user);
+        log.info("[鉴权注销] deleteMe done userId={}, elapsedMs={}", userId, System.currentTimeMillis() - startMs);
+    }
+
+    /**
+     * 按引导配置解析角色；名单外一律 USER。
+     */
+    private UserRole resolveRole(String username) {
+        // 对照 yml 引导名单，不查询其它权限表
+        return adminProperties.isBootstrapAdmin(username) ? UserRole.ADMIN : UserRole.USER;
     }
 }

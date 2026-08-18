@@ -1,0 +1,2 @@
+ALTER TABLE work_out_user
+    ADD COLUMN role VARCHAR(16) NOT NULL DEFAULT 'USER';

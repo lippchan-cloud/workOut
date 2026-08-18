@@ -20,4 +20,9 @@ public interface ProfileRepository extends JpaRepository<ProfileEntity, Long> {
      * 按一批 userId 批量加载资料，供 CMS 列表一次拼装。
      */
     List<ProfileEntity> findByUserIdIn(Collection<Long> userIds);
+
+    /**
+     * 按用户批量删除资料（注销账号），禁止循环 deleteById。
+     */
+    void deleteByUserId(Long userId);
 }

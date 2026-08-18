@@ -571,6 +571,16 @@ button {
   border: 1px solid var(--stroke);
   background: rgba(0, 0, 0, 0.22);
   font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.record-list__actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
 }
 
 .record-consume {

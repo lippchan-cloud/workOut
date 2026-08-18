@@ -1,17 +1,19 @@
 package com.workout.modules.admin.api;
 
+import com.workout.modules.auth.domain.UserRole;
 import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
  * CMS 账户列表项（API 边界）。
- * 仅含用户名、创建时间与资料可见字段；禁止携带密码或密码哈希。
+ * 仅含用户名、创建时间、角色与资料可见字段；禁止携带密码或密码哈希。
  */
 public class AdminAccountResponse {
 
     private final Long userId;
     private final String username;
     private final Instant createdAt;
+    private final UserRole role;
     private final String nickname;
     private final BigDecimal heightCm;
     private final BigDecimal weightKg;
@@ -23,12 +25,14 @@ public class AdminAccountResponse {
             Long userId,
             String username,
             Instant createdAt,
+            UserRole role,
             String nickname,
             BigDecimal heightCm,
             BigDecimal weightKg) {
         this.userId = userId;
         this.username = username;
         this.createdAt = createdAt;
+        this.role = role;
         this.nickname = nickname;
         this.heightCm = heightCm;
         this.weightKg = weightKg;
@@ -53,6 +57,13 @@ public class AdminAccountResponse {
      */
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    /**
+     * 角色。
+     */
+    public UserRole getRole() {
+        return role;
     }
 
     /**

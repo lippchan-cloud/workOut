@@ -12,9 +12,20 @@ application-local.yml
 .env
 .env.*
 
-# Java / Maven
+# Java / Maven 编译与打包产物（源码 backend/src、pom.xml 仍入库）
 backend/target/
+*.class
+*.jar
+*.war
+*.ear
 
-# Frontend
+# Frontend 依赖与 Vite 构建产物
 frontend/node_modules/
 frontend/dist/
+node_modules/
+
+# 前端 build:static / Docker 多阶段构建拷入的 SPA（启动或镜像构建时再生成，不入库）
+backend/src/main/resources/static/
+
+# 本地 docker 镜像包等
+*.tar

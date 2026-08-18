@@ -7,6 +7,9 @@ spring:
     username: user_lipp
     password: "pgGJlfNr1pSJbcq1"
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 3
+      minimum-idle: 0
   jpa:
     hibernate:
       ddl-auto: validate
@@ -24,3 +27,5 @@ workout:
   jwt:
     secret: test-secret-key-which-is-long-enough-for-hs256-algorithms-0123456789
     expire-days: 7
+  admin:
+    usernames: ""

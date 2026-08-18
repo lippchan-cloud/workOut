@@ -2,6 +2,8 @@ package com.workout.config;
 
 import com.workout.common.ApiResponse;
 import com.workout.common.BusinessException;
+import com.workout.common.ForbiddenException;
+import com.workout.common.NotFoundException;
 import com.workout.common.UnauthorizedException;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -46,12 +48,30 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 将已认证但无权限映射为 HTTP 403。
+     */
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiResponse<Void>> handleForbidden(ForbiddenException ex) {
+        log.info("[API异常] forbidden msg={}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.fail(403, ex.getMessage()));
+    }
+
+    /**
      * 将未授权映射为 HTTP 401。
      */
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ApiResponse<Void>> handleUnauthorized(UnauthorizedException ex) {
         log.info("[API异常] unauthorized msg={}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.fail(401, ex.getMessage()));
+    }
+
+    /**
+     * 将资源不存在映射为 HTTP 404。
+     */
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotFoundBusiness(NotFoundException ex) {
+        log.info("[API异常] not found msg={}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.fail(404, ex.getMessage()));
     }
 
     /**

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { apiGet } from "../api/client";
+import { apiDelete, apiGet } from "../api/client";
 import { addWeeks, formatYearMonth, formatYmd, parseYmd, weekContaining } from "../calendar/week";
 
 type RecordItem = {
@@ -12,6 +12,7 @@ type RecordItem = {
 };
 
 type FilterMode = "day" | "month" | "range";
+type LoadStatus = "loading" | "success" | "error";
 
 /**
  * 日历页：按日（周条 + 跳转）、按月、自定义区间；列表与导出共用筛选参数。
@@ -28,6 +29,8 @@ export function CalendarPage() {
   const [from, setFrom] = useState(todayYmd);
   const [to, setTo] = useState(todayYmd);
   const [list, setList] = useState<RecordItem[]>([]);
+  const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
+  const [reloadKey, setReloadKey] = useState(0);
   const week = weekContaining(anchor);
 
   const periodQuery = () => {
@@ -46,12 +49,30 @@ export function CalendarPage() {
     }
     if (mode === "range" && from > to) {
       setList([]);
+      setLoadStatus("success");
       return;
     }
+    let cancelled = false;
+    setLoadStatus("loading");
     apiGet<{ list: RecordItem[] }>(`/api/v1/dailyRecords?${periodQuery()}`)
-      .then((data) => setList(data.list))
-      .catch(() => setList([]));
-  }, [isAuthenticated, mode, selected, yearMonth, from, to]);
+      .then((data) => {
+        if (cancelled) {
+          return;
+        }
+        setList(data.list);
+        setLoadStatus("success");
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        setList([]);
+        setLoadStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, mode, selected, yearMonth, from, to, reloadKey]);
 
   const onJump = (ymd: string) => {
     if (!ymd) {
@@ -97,6 +118,19 @@ export function CalendarPage() {
     URL.revokeObjectURL(url);
   };
 
+  const onEdit = (item: RecordItem) => {
+    const path = item.type === "CONSUME" ? "/record/consume" : "/record/intake";
+    navigate(`${path}?edit=${item.id}`, { state: item });
+  };
+
+  const onDelete = async (item: RecordItem) => {
+    if (!window.confirm("确认删除这条记录？")) {
+      return;
+    }
+    await apiDelete(`/api/v1/dailyRecords/${item.id}`);
+    setReloadKey((value) => value + 1);
+  };
+
   return (
     <div className="page">
       <p className="page__eyebrow">Week</p>
@@ -128,6 +162,9 @@ export function CalendarPage() {
               </button>
               <button type="button" className="btn btn-ghost" onClick={() => setAnchor(addWeeks(anchor, 1))}>
                 下一周
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => navigate(`/record?date=${selected}`)}>
+                补记
               </button>
             </div>
             <div className="week-strip" role="list" aria-label="周条">
@@ -176,9 +213,17 @@ export function CalendarPage() {
           </div>
         ) : null}
 
-        {list.length === 0 ? (
-          <p className="empty-state">{emptyMessage}</p>
-        ) : (
+        {loadStatus === "loading" ? <p className="empty-state">加载中…</p> : null}
+        {loadStatus === "error" ? (
+          <div className="empty-state">
+            <p>记录加载失败</p>
+            <button type="button" className="btn btn-ghost" onClick={() => setReloadKey((value) => value + 1)}>
+              重试
+            </button>
+          </div>
+        ) : null}
+        {loadStatus === "success" && list.length === 0 ? <p className="empty-state">{emptyMessage}</p> : null}
+        {loadStatus === "success" && list.length > 0 ? (
           <ul className="record-list">
             {list.map((item) => (
               <li
@@ -187,10 +232,18 @@ export function CalendarPage() {
                 style={{ color: item.type === "CONSUME" ? "#16A34A" : "#DC2626" }}
               >
                 {item.content}
+                <span className="record-list__actions">
+                  <button type="button" className="btn btn-ghost" onClick={() => onEdit(item)}>
+                    编辑
+                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={() => onDelete(item)}>
+                    删除
+                  </button>
+                </span>
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
 
         <button type="button" className="btn btn-primary btn-block" onClick={onExport}>
           导出 CSV
