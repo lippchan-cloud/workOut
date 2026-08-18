@@ -6,7 +6,7 @@
 | 文档版本 | v1.0 |
 | 分支 | `feat/init-workout-mvp` |
 | 规范 | [workOut-TDD规范.md](./workOut-TDD规范.md) |
-| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md)、[extend-calendar-month-range-csv tasks](../openspec/changes/extend-calendar-month-range-csv/tasks.md)、[phase-2-production-hardening tasks](../openspec/changes/phase-2-production-hardening/tasks.md) |
+| OpenSpec | [init-workout-mvp tasks](../openspec/changes/init-workout-mvp/tasks.md)、[add-admin-cms-accounts tasks](../openspec/changes/add-admin-cms-accounts/tasks.md)、[extend-calendar-month-range-csv tasks](../openspec/changes/extend-calendar-month-range-csv/tasks.md)、[phase-2-production-hardening tasks](../openspec/changes/phase-2-production-hardening/tasks.md)、[phase-3-ui-hierarchy tasks](../openspec/changes/phase-3-ui-hierarchy/tasks.md) |
 
 > 规则：未写本页证据，不得勾选 `tasks.md`。
 
@@ -73,6 +73,18 @@
 | P2-7.1 | 相关回归 | N/A | 已证 | §P2-7.1 | 是 |
 | P2-7.2 | openspec validate | N/A | 通过 | §P2-7.2 | 是 |
 | P2-7.3 | 不提交 git | N/A | 已遵守 | §P2-7.3 | 是 |
+| P3-1.1 | GET record by id | 已证 | 已证 | §P3-1.1 | 是 |
+| P3-2.1 | 我的三级选项 | 已证 | 已证 | §P3-2.1 | 是 |
+| P3-2.2 | ADMIN CMS 在账号页 | 已证 | 已证 | §P3-2.2 | 是 |
+| P3-3.1 | 小周切换 | 已证 | 已证 | §P3-3.1 | 是 |
+| P3-3.2 | 周 from&to 与气泡 | 已证 | 已证 | §P3-3.2 | 是 |
+| P3-3.3 | 详情路由 GET by id | 已证 | 已证 | §P3-3.3 | 是 |
+| P3-3.4 | 补记次要样式 | 已证 | 已证 | §P3-3.4 | 是 |
+| P3-4.1 | 按钮层级 | N/A | 已证 | §P3-4.1 | 是 |
+| P3-5.x | 文档与 main specs | N/A | 已写 | §P3-5.x | 是 |
+| P3-6.1 | 相关回归 | N/A | 已证 | §P3-6.1 | 是 |
+| P3-6.2 | openspec validate | N/A | 通过 | §P3-6.2 | 是 |
+| P3-6.3 | 不提交 git | N/A | 已遵守 | §P3-6.3 | 是 |
 
 ---
 
@@ -980,4 +992,75 @@ OpenSpec：`openspec/changes/phase-2-production-hardening/`。测试库仍为 SQ
 
 - 本实现会话未执行 `git commit` / `git push`；未拆 dev/stage/prod；DB/JWT 仍留现有 yml；`application-test.yml` 仅加小连接池，非多环境
 - 勾选：tasks.md 7.3
+
+---
+
+## §P3 — phase-3-ui-hierarchy（2026-08-18）
+
+OpenSpec：`openspec/changes/phase-3-ui-hierarchy/`。未 commit。
+
+### Task 1.1 — GET record by id
+
+- 对应规格：`daily-record` — GET by id；跨用户/缺失 404「记录不存在」
+- 测试类：`backend/src/test/java/com/workout/record/DailyRecordGetByIdTest.java`
+- RED 命令：`cd backend && mvn -q test -Dtest=DailyRecordGetByIdTest`
+- RED 结果：**FAIL** — Tests run: 3, Failures: 3。`Status expected:<200>/<404> but was:<500>`（`HttpRequestMethodNotSupportedException`：`/{id}` 仅有 PUT/DELETE，无 GET）
+- GREEN 命令：同上
+- GREEN 结果：**PASS**（exit 0）。所有者 200；跨用户与缺失 404「记录不存在」
+- 实现要点：`DailyRecordController.getById` + `DailyRecordService.getById` 复用 `requireOwned`（一次 id+userId 查询）
+- 勾选：phase-3 tasks.md 1.1
+
+### Task 2.1 / 2.2 — 「我的」三级与 CMS 入口
+
+- 对应规格：`user-profile` / `ui-hierarchy`
+- 测试文件：`frontend/src/ProfilePage.test.tsx`
+- RED 命令：`cd frontend && npm test -- --run src/ProfilePage.test.tsx`
+- RED 结果：**FAIL** — 找不到「身体资料」「账号安全」「返回」；`/profile` 仍摊开身高与改密
+- GREEN 命令：`cd frontend && npm test -- --run src/ProfilePage.test.tsx`
+- GREEN 结果：**PASS** — Tests 7 passed
+- 实现要点：`/profile` 三选项；`/profile/body` 资料；`/profile/account` 改密/注销；ADMIN 仅账号页见「后台管理」
+- 勾选：tasks.md 2.1 / 2.2
+
+### Task 3.1–3.4 — 日历小周切换、气泡、详情、补记
+
+- 对应规格：`calendar-view`
+- 测试文件：`frontend/src/CalendarPage.test.tsx`、`frontend/src/calendar/week.test.ts`
+- RED：`countByLocalYmd is not a function`；无 `week-nav-btn`；日模式仍打 `date=`；找不到列表按钮「跑步」与详情「返回」
+- GREEN 命令：`cd frontend && npm test -- --run src/CalendarPage.test.tsx src/calendar/week.test.ts`
+- GREEN 结果：**PASS** — CalendarPage 17 + week 3
+- 实现要点：日模式一次 `from&to`；格子气泡；`/calendar/records/:id` GET by id；补记 `btn-text`；周切换 `week-nav-btn`
+- 勾选：tasks.md 3.1 / 3.2 / 3.3 / 3.4
+
+### Task 4.1 — 按钮层级
+
+- 实现：`index.css` 主 CTA 实色绿、ghost 次要、`.btn-text` / `.week-nav-btn` 小控件；`.btn-record-hero` 圆角与触控高度收一档
+- 回归：RecordPage 10 tests 仍绿
+- 勾选：tasks.md 4.1
+
+### Task 5.x — 文档与 main specs
+
+- 已更新 `doc/workOut-产品文档.md`、`doc/workOut-功能文档.md`、README 第 7 条
+- 已 sync：`openspec/specs/{ui-hierarchy,user-profile,calendar-view,daily-record}/spec.md`
+- 勾选：tasks.md 5.1–5.4
+
+### Task 6.1 — 相关回归（本会话）
+
+- 命令：`cd backend && mvn -q test -Dtest=SpaHostingTest,DailyRecordGetByIdTest,CsvExportTest,DailyRecordQueryTest,DailyRecordUpdateDeleteTest`
+- 结果：**PASS** — exit 0（含详情/身体资料深链 SPA fallback；GET by id 未抢走 `exportCsv`）
+- 命令：`cd frontend && npm test -- --run`
+- 结果：**PASS** — Test Files 11 passed；Tests 56 passed (56)
+- 未跑全量 `mvn test`（避免 DockerProfile 再开连接池打满 SQLPub）
+- 勾选：tasks.md 6.1
+
+### Task 6.2 — openspec validate
+
+- 命令：`openspec validate phase-3-ui-hierarchy --type change`
+- 结果：`Change 'phase-3-ui-hierarchy' is valid`
+- 勾选：tasks.md 6.2
+
+### Task 6.3 — 不提交 git
+
+- 本实现会话未执行 `git commit` / `git push`
+- 勾选：tasks.md 6.3
+
 

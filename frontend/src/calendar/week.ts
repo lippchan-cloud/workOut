@@ -54,3 +54,23 @@ export function formatYearMonth(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;
 }
+
+/**
+ * 按 Asia/Shanghai 自然日格式化时间戳，避免测试/浏览器时区把 +08:00 记到前一天。
+ */
+export function formatShanghaiYmd(isoOrDate: string | Date): string {
+  const date = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;
+  return date.toLocaleDateString("en-CA", { timeZone: "Asia/Shanghai" });
+}
+
+/**
+ * 将记录按上海时区自然日聚合条数，供周格子气泡一次计算。
+ */
+export function countByLocalYmd(records: { recordedAt: string }[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const row of records) {
+    const ymd = formatShanghaiYmd(row.recordedAt);
+    counts[ymd] = (counts[ymd] ?? 0) + 1;
+  }
+  return counts;
+}

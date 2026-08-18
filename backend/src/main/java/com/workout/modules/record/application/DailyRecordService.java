@@ -111,6 +111,26 @@ public class DailyRecordService {
     }
 
     /**
+     * 按 id 读取当前用户自己的日记录，供详情页刷新直达。
+     *
+     * @param userId JWT 用户主键
+     * @param id     记录主键
+     * @return 未删除且属于该用户的记录
+     */
+    @Transactional(readOnly = true)
+    public DailyRecordResponse getById(Long userId, Long id) {
+        log.info("[日记录] getById start userId={}, id={}", userId, id);
+        // 一次按 id+userId 加载，跨用户与缺失走同一 404
+        DailyRecordEntity entity = requireOwned(userId, id);
+        log.info(
+                "[日记录] getById loaded entityType=DailyRecordEntity id={}, userId={}, type={}",
+                entity.getId(),
+                entity.getUserId(),
+                entity.getType());
+        return DailyRecordResponse.from(entity);
+    }
+
+    /**
      * 逻辑删除当前用户自己的日记录。
      *
      * @param userId JWT 用户主键

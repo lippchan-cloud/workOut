@@ -46,7 +46,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               const active =
                 tab.path === "/"
                   ? location.pathname === "/" || location.pathname.startsWith("/record")
-                  : isActive;
+                  : tab.path === "/calendar"
+                    ? location.pathname.startsWith("/calendar")
+                    : tab.path === "/profile"
+                      ? location.pathname.startsWith("/profile")
+                      : isActive;
               return (
                 <button type="button" className={active ? "active" : undefined}>
                   {tab.label}

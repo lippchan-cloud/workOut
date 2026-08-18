@@ -95,6 +95,18 @@ public class DailyRecordController {
     }
 
     /**
+     * 按 id 读取当前用户自己的一条记录（详情页刷新直达）。
+     */
+    @GetMapping("/{id}")
+    public ApiResponse<DailyRecordResponse> getById(@PathVariable Long id) {
+        AuthPrincipal principal = CurrentUser.require();
+        log.info("[日记录] DailyRecordController.getById start userId={}, id={}", principal.getUserId(), id);
+        DailyRecordResponse data = dailyRecordService.getById(principal.getUserId(), id);
+        log.info("[日记录] DailyRecordController.getById done id={}, userId={}", data.getId(), principal.getUserId());
+        return ApiResponse.ok(data);
+    }
+
+    /**
      * 按单日 / 整月 / 自定义区间查询当前用户记录列表。参数互斥由应用服务解析。
      */
     @GetMapping

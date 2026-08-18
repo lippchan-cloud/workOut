@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { apiDelete, apiGet } from "../api/client";
-import { addWeeks, formatYearMonth, formatYmd, parseYmd, weekContaining } from "../calendar/week";
+import { apiGet } from "../api/client";
+import { addWeeks, countByLocalYmd, formatShanghaiYmd, formatYearMonth, formatYmd, parseYmd, weekContaining } from "../calendar/week";
 
 type RecordItem = {
   id: number;
@@ -15,16 +15,19 @@ type FilterMode = "day" | "month" | "range";
 type LoadStatus = "loading" | "success" | "error";
 
 /**
- * 日历页：按日（周条 + 跳转）、按月、自定义区间；列表与导出共用筛选参数。
+ * 日历页：周条为主体（小周切换 + hover + 数量气泡）；列表点进详情。
  */
 export function CalendarPage() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const today = new Date();
   const todayYmd = formatYmd(today);
+  const dateParam = searchParams.get("date");
+  const initialSelected = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayYmd;
   const [mode, setMode] = useState<FilterMode>("day");
-  const [anchor, setAnchor] = useState(today);
-  const [selected, setSelected] = useState(todayYmd);
+  const [anchor, setAnchor] = useState(() => parseYmd(initialSelected));
+  const [selected, setSelected] = useState(initialSelected);
   const [yearMonth, setYearMonth] = useState(formatYearMonth(today));
   const [from, setFrom] = useState(todayYmd);
   const [to, setTo] = useState(todayYmd);
@@ -32,6 +35,8 @@ export function CalendarPage() {
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [reloadKey, setReloadKey] = useState(0);
   const week = weekContaining(anchor);
+  const weekStart = formatYmd(week[0]);
+  const weekEnd = formatYmd(week[6]);
 
   const periodQuery = () => {
     if (mode === "month") {
@@ -40,7 +45,7 @@ export function CalendarPage() {
     if (mode === "range") {
       return `from=${from}&to=${to}`;
     }
-    return `date=${selected}`;
+    return `from=${weekStart}&to=${weekEnd}`;
   };
 
   useEffect(() => {
@@ -72,14 +77,34 @@ export function CalendarPage() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, mode, selected, yearMonth, from, to, reloadKey]);
+  }, [isAuthenticated, mode, selected, yearMonth, from, to, reloadKey, weekStart, weekEnd]);
+
+  const counts = useMemo(() => countByLocalYmd(list), [list]);
+  const visibleList =
+    mode === "day" ? list.filter((item) => formatShanghaiYmd(item.recordedAt) === selected) : list;
+
+  const selectDay = (ymd: string) => {
+    setSelected(ymd);
+    setAnchor(parseYmd(ymd));
+    setSearchParams({ date: ymd }, { replace: true });
+  };
+
+  const shiftWeek = (delta: number) => {
+    const nextAnchor = addWeeks(anchor, delta);
+    const nextWeek = weekContaining(nextAnchor);
+    const idx = week.findIndex((day) => formatYmd(day) === selected);
+    const picked = nextWeek[idx >= 0 ? idx : 0];
+    const ymd = formatYmd(picked);
+    setAnchor(nextAnchor);
+    setSelected(ymd);
+    setSearchParams({ date: ymd }, { replace: true });
+  };
 
   const onJump = (ymd: string) => {
     if (!ymd) {
       return;
     }
-    setSelected(ymd);
-    setAnchor(parseYmd(ymd));
+    selectDay(ymd);
   };
 
   const csvFilename = () => {
@@ -101,7 +126,8 @@ export function CalendarPage() {
       return;
     }
     const token = localStorage.getItem("workout_token");
-    const response = await fetch(`/api/v1/dailyRecords/exportCsv?${periodQuery()}`, {
+    const exportQuery = mode === "day" ? `date=${selected}` : periodQuery();
+    const response = await fetch(`/api/v1/dailyRecords/exportCsv?${exportQuery}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (response.status === 401) {
@@ -118,17 +144,8 @@ export function CalendarPage() {
     URL.revokeObjectURL(url);
   };
 
-  const onEdit = (item: RecordItem) => {
-    const path = item.type === "CONSUME" ? "/record/consume" : "/record/intake";
-    navigate(`${path}?edit=${item.id}`, { state: item });
-  };
-
-  const onDelete = async (item: RecordItem) => {
-    if (!window.confirm("确认删除这条记录？")) {
-      return;
-    }
-    await apiDelete(`/api/v1/dailyRecords/${item.id}`);
-    setReloadKey((value) => value + 1);
+  const openDetail = (item: RecordItem) => {
+    navigate(`/calendar/records/${item.id}?date=${formatShanghaiYmd(item.recordedAt)}`);
   };
 
   return (
@@ -157,13 +174,15 @@ export function CalendarPage() {
               <input type="date" aria-label="跳转到" value={selected} onChange={(event) => onJump(event.target.value)} />
             </label>
             <div className="week-toolbar">
-              <button type="button" className="btn btn-ghost" onClick={() => setAnchor(addWeeks(anchor, -1))}>
-                上一周
-              </button>
-              <button type="button" className="btn btn-ghost" onClick={() => setAnchor(addWeeks(anchor, 1))}>
-                下一周
-              </button>
-              <button type="button" className="btn btn-primary" onClick={() => navigate(`/record?date=${selected}`)}>
+              <div className="week-nav">
+                <button type="button" className="week-nav-btn" onClick={() => shiftWeek(-1)}>
+                  上一周
+                </button>
+                <button type="button" className="week-nav-btn" onClick={() => shiftWeek(1)}>
+                  下一周
+                </button>
+              </div>
+              <button type="button" className="btn btn-text" onClick={() => navigate(`/record?date=${selected}`)}>
                 补记
               </button>
             </div>
@@ -171,14 +190,20 @@ export function CalendarPage() {
               {week.map((day) => {
                 const ymd = formatYmd(day);
                 const isToday = ymd === todayYmd;
+                const count = counts[ymd] ?? 0;
                 return (
                   <button
                     key={ymd}
                     type="button"
                     className={`week-day${isToday ? " week-day--today" : ""}`}
                     aria-pressed={selected === ymd}
-                    onClick={() => setSelected(ymd)}
+                    onClick={() => selectDay(ymd)}
                   >
+                    {count > 0 ? (
+                      <span className="week-day__badge" aria-label={`${count} 条记录`}>
+                        {count}
+                      </span>
+                    ) : null}
                     {ymd.slice(5)}
                     {isToday ? " 今" : ""}
                   </button>
@@ -222,24 +247,18 @@ export function CalendarPage() {
             </button>
           </div>
         ) : null}
-        {loadStatus === "success" && list.length === 0 ? <p className="empty-state">{emptyMessage}</p> : null}
-        {loadStatus === "success" && list.length > 0 ? (
+        {loadStatus === "success" && visibleList.length === 0 ? <p className="empty-state">{emptyMessage}</p> : null}
+        {loadStatus === "success" && visibleList.length > 0 ? (
           <ul className="record-list">
-            {list.map((item) => (
+            {visibleList.map((item) => (
               <li
                 key={item.id}
                 className={item.type === "CONSUME" ? "record-consume" : "record-intake"}
                 style={{ color: item.type === "CONSUME" ? "#16A34A" : "#DC2626" }}
               >
-                {item.content}
-                <span className="record-list__actions">
-                  <button type="button" className="btn btn-ghost" onClick={() => onEdit(item)}>
-                    编辑
-                  </button>
-                  <button type="button" className="btn btn-ghost" onClick={() => onDelete(item)}>
-                    删除
-                  </button>
-                </span>
+                <button type="button" className="record-list__open" onClick={() => openDetail(item)}>
+                  {item.content}
+                </button>
               </li>
             ))}
           </ul>
