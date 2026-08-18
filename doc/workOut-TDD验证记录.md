@@ -1521,3 +1521,37 @@ OpenSpec：`openspec/changes/phase-3-ui-hierarchy/`。未 commit。
 - 勾选：tasks.md 6.3
 
 
+
+## 七期 phase-7-ai-advice-deepseek
+
+### Task 2.1–2.3 / 3.2–3.3 — Stub DeepSeek、限流、无 Key、异步建议
+
+- 对应规格：`openspec/specs/ai-advice/spec.md`；`share-report` adviceStatus
+- 测试类：`ShareAdviceAsyncTest`、`AiAdviceRateLimitTest`、`ShareReportTest`
+- RED→GREEN：先断言 NONE_KEY / SQL 限流 / stub READY·FAILED；实现后窄测全绿
+- GREEN 命令：`cd backend && mvn -q test -Dtest=ShareAdviceAsyncTest,AiAdviceRateLimitTest,AdminApiKeyAndAiCallTest,ShareReportTest`
+- GREEN 结果：PASS — Tests run: 12, Failures: 0（Stub 禁外网；假 key；MySQL COUNT 限流）
+- 实现要点：`StubDeepSeekClient`；`AiRateLimitService` SQL 聚合；`ShareAdviceWorker` REQUIRES_NEW；AFTER_COMMIT 事件
+- 勾选：tasks.md 2.1–2.3、3.2–3.3
+
+### Task 4.1–4.2 — CMS API Key / AI 调用
+
+- 测试类：`AdminApiKeyAndAiCallTest`
+- GREEN：同上命令内 PASS（401/403/掩码/batch）
+- 勾选：tasks.md 4.1–4.2
+
+### Task 5.2–5.3 — 报告页与 CMS 栏
+
+- 测试文件：`frontend/src/ReportPage.test.tsx`、`CmsPage.test.tsx`
+- GREEN 命令：`cd frontend && npm test -- src/ReportPage.test.tsx src/CmsPage.test.tsx`
+- GREEN 结果：PASS — 15 tests
+- 勾选：tasks.md 5.1–5.3
+
+### Task 6.x — Skill / 文档 / sync
+
+- Skill：`.cursor/skills/physio-scientist-advice/SKILL.md`
+- 文档：`doc/workOut-AI方案.md`、`doc/workOut-上下文工程.md`；产品/功能/架构已改「建议分析」
+- main specs：`ai-advice` 新建；`admin-cms` / `share-report` / `ui-hierarchy` 已 sync
+- Key 初始化：`application.yml` / `application-docker.yml` 的 `WORKOUT_DEEPSEEK_API_KEY`；`DeepSeekApiKeySeeder` 赋给 seed 用户名（demo、lipp）；日志仅掩码；测试用不真 key
+- 未 commit
+
