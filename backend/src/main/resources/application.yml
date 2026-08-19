@@ -22,6 +22,21 @@ spring:
     baseline-description: Shared inv_doc schema already has other tables
   jackson:
     time-zone: Asia/Shanghai
+  # C 端邮箱验证码 SMTP（163）；授权码非登录密码。详见 doc/workOut-邮箱SMTP.md
+  mail:
+    host: ${WORKOUT_MAIL_HOST:smtp.163.com}
+    port: ${WORKOUT_MAIL_PORT:465}
+    username: ${WORKOUT_MAIL_USERNAME:lippcloud@163.com}
+    password: ${WORKOUT_MAIL_PASSWORD:JYQ8CqSJmZ7GEuAD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 server:
   port: 8080
@@ -34,6 +49,9 @@ workout:
     # 逗号分隔；注册或登录时提升为 ADMIN。私有仓可直接写用户名。
     usernames: ${WORKOUT_ADMIN_USERNAMES:lipp}
   public-base-url: ${WORKOUT_PUBLIC_BASE_URL:http://localhost:8080}
+  mail:
+    # 发件人须与 163 授权账号一致
+    from: ${WORKOUT_MAIL_FROM:lippcloud@163.com}
   ai:
     # 限流与上下文向量化均以 MySQL 为准，不用 Redis / 内存计数器 / 独立向量库。
     async:

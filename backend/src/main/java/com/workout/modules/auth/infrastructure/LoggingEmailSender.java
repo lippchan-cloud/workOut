@@ -3,24 +3,35 @@ package com.workout.modules.auth.infrastructure;
 import com.workout.modules.auth.application.EmailSender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
 /**
  * 默认验证码投递：写 INFO 日志（基础设施层）。
- * 未配置 SMTP 时供本地/演示使用；测试 profile 由 CapturingEmailSender @Primary 覆盖注入。
+ * 仅在未配置 SMTP（无 {@link JavaMailSender}）时启用；已配置时由 {@link SmtpEmailSender} 发信。
+ * 测试 profile 由 CapturingEmailSender {@code @Primary} 覆盖注入。
  */
 @Component
+@ConditionalOnMissingBean(JavaMailSender.class)
 public class LoggingEmailSender implements EmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingEmailSender.class);
 
     /**
      * 记录验证码到日志，便于无 SMTP 环境完成绑定与登录。
+     *
+     * @param email   规范化邮箱
+     * @param purpose 用途标签（BIND/UNBIND/LOGIN）
+     * @param code    明文 4 位码，仅用于投递/联调
      */
     @Override
     public void sendVerificationCode(String email, String purpose, String code) {
-        log.info("[邮箱验证码] sendVerificationCode start purpose={}, email={}", purpose, mask(email));
-        log.info("[邮箱验证码] sendVerificationCode delivered purpose={}, email={}, code={}", purpose, mask(email), code);
+        // 关键入口：无 SMTP 时回落日志投递
+        log.info("[邮箱验证码] logging sendVerificationCode start purpose={}, email={}", purpose, mask(email));
+        // 联调可读明文码；生产应配置 spring.mail.host 走 SMTP
+        log.info("[邮箱验证码] logging sendVerificationCode delivered purpose={}, email={}, code={}",
+                purpose, mask(email), code);
     }
 
     /**

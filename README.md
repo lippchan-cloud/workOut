@@ -74,6 +74,11 @@ docker run --rm -p 18080:8080 \
 | `WORKOUT_JWT_SECRET` | 可选，覆盖 JWT HMAC 密钥 |
 | `WORKOUT_DEEPSEEK_API_KEY` | DeepSeek API Key；**不要写入仓库**。启动时赋给 `demo`/`lipp` |
 | `WORKOUT_PUBLIC_BASE_URL` | 可选，分享 H5 链接基址，默认 `http://localhost:8080` |
+| `WORKOUT_MAIL_HOST` | 可选，覆盖 SMTP 主机（默认 `smtp.163.com`）；详见 [邮箱 SMTP](./doc/workOut-邮箱SMTP.md) |
+| `WORKOUT_MAIL_PORT` | 可选，覆盖 SMTP 端口（默认 `465`） |
+| `WORKOUT_MAIL_USERNAME` | 可选，覆盖发信账号 |
+| `WORKOUT_MAIL_PASSWORD` | 可选，覆盖 SMTP 授权码（非登录密码） |
+| `WORKOUT_MAIL_FROM` | 可选，覆盖发件人，默认与账号一致 |
 
 ## 测试命令
 
@@ -95,6 +100,7 @@ cd frontend && npm test
 - [功能文档](doc/workOut-功能文档.md)
 - [技术架构](doc/workOut-技术架构.md)
 - 数据库连接说明见 [doc/workOut-数据库连接.md](./doc/workOut-数据库连接.md)（私有仓，默认已写入 `application.yml`）
+- 邮箱 SMTP 说明见 [doc/workOut-邮箱SMTP.md](./doc/workOut-邮箱SMTP.md)（C 端验证码发信；私有仓默认已写入 `application.yml`）
 - [验收记录](doc/验收记录.md)（T00–T13）
 
 ## OpenSpec + TDD

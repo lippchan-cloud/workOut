@@ -22,6 +22,10 @@ spring:
     baseline-on-migrate: true
     baseline-version: 1
     baseline-description: Shared inv_doc schema already has other tables
+  # 集成测试不连真实 SMTP：不创建 JavaMailSender，由 CapturingEmailSender 捕获验证码
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
 
 workout:
   jwt:
