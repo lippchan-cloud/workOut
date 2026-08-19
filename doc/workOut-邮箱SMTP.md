@@ -13,7 +13,7 @@
 
 ## 1. 用途
 
-C 端 **绑定 / 解绑 / 邮箱登录** 的 **4 位数字验证码** 发信。后端经 `EmailSender` 投递：已配置 `spring.mail.host` 时走 SMTP（`SmtpEmailSender`）；未配置时回落日志（`LoggingEmailSender`，前缀 `[邮箱验证码]`）。
+C 端 **绑定 / 解绑 / 邮箱登录** 的 **4 位数字验证码** 发信。后端经 `DefaultEmailSender` 路由：存在 `JavaMailSender`（已配 `spring.mail.host`）时委托 `SmtpEmailSender`；否则回落 `LoggingEmailSender`（前缀 `[邮箱验证码]`）。日志关键字：`route smtp` / `smtp sendVerificationCode done`。
 
 ---
 
@@ -46,9 +46,10 @@ spring:
           auth: true
           ssl:
             enable: true
-          connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
+            trust: smtp.163.com
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
 
 workout:
   mail:
@@ -110,7 +111,7 @@ docker run --rm -p 8080:8080 \
 ## 6. 如何验证
 
 1. 启动后端后，在「我的 → 账号安全」发起绑定（或调用 `POST /api/v1/auth/email/sendCode`）。
-2. 日志中搜索 `[邮箱验证码]`：应出现 `smtp sendVerificationCode start/done`（而非 `logging ... delivered`）。
-3. 目标邮箱应收到主题为「workOut 验证码」的邮件，正文含 4 位数字码；用该码完成绑定/登录/解绑。
+2. 日志中搜索 `[邮箱验证码]`：应出现 `route smtp` 与 `smtp sendVerificationCode start/done`（若仍是 `route logging` / `logging ... delivered`，说明未加载 `JavaMailSender`，请确认已配 `spring.mail.host` 并重启）。
+3. 目标邮箱应收到主题为「workOut 验证码」的邮件，正文含 4 位数字码；也请检查垃圾箱。用该码完成绑定/登录/解绑。
 
 集成测试使用 `CapturingEmailSender`（`@Primary` + `test` profile），不发真实邮件。

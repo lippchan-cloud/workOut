@@ -74,7 +74,7 @@ flowchart TB
 | `modules.auth.api` | Auth Controller 与 DTO；`CurrentUser` 只读 JWT |
 | `modules.auth.application` | `AuthService` / `EmailAuthService` 编排 |
 | `modules.auth.domain` | `AuthPrincipal`、`EmailCodePurpose` |
-| `modules.auth.infrastructure` | `UserEntity`/`UserRepository`、`JwtService`、`JwtAuthFilter`、邮箱验证码仓储；`SmtpEmailSender`（已配 `spring.mail.host`）或 `LoggingEmailSender` 回落；配置见 [workOut-邮箱SMTP.md](./workOut-邮箱SMTP.md) |
+| `modules.auth.infrastructure` | `UserEntity`/`UserRepository`、`JwtService`、`JwtAuthFilter`、邮箱验证码仓储；`DefaultEmailSender` 路由 SMTP/`Logging`；配置见 [workOut-邮箱SMTP.md](./workOut-邮箱SMTP.md) |
 | `modules.record.*` | 日记录 + xlsx 导出（api / application / domain / infrastructure） |
 | `modules.profile.*` | 个人资料与身体历史（api / application / infrastructure） |
 | `modules.share.*` | 分享创建与公开报告（api / application / infrastructure） |

@@ -3,17 +3,12 @@ package com.workout.modules.auth.infrastructure;
 import com.workout.modules.auth.application.EmailSender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.stereotype.Component;
 
 /**
  * 默认验证码投递：写 INFO 日志（基础设施层）。
- * 仅在未配置 SMTP（无 {@link JavaMailSender}）时启用；已配置时由 {@link SmtpEmailSender} 发信。
+ * 由 {@link com.workout.config.EmailSenderConfiguration} 在缺少其它 {@link EmailSender} 时注册。
  * 测试 profile 由 CapturingEmailSender {@code @Primary} 覆盖注入。
  */
-@Component
-@ConditionalOnMissingBean(JavaMailSender.class)
 public class LoggingEmailSender implements EmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingEmailSender.class);

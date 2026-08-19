@@ -3,18 +3,13 @@ package com.workout.modules.auth.infrastructure;
 import com.workout.modules.auth.application.EmailSender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.stereotype.Component;
 
 /**
  * 基于 SMTP 的验证码投递（基础设施层）。
- * 在存在 {@link JavaMailSender}（已配置 {@code spring.mail.host}）时启用；禁止把授权码写入日志。
+ * 由 {@link com.workout.config.EmailSenderConfiguration} 在 JavaMailSender 就绪后注册；禁止把授权码写入日志。
  */
-@Component
-@ConditionalOnBean(JavaMailSender.class)
 public class SmtpEmailSender implements EmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(SmtpEmailSender.class);
@@ -28,9 +23,7 @@ public class SmtpEmailSender implements EmailSender {
      * @param mailSender  JavaMail 发送器
      * @param fromAddress 发件人（须与 163 授权账号一致）
      */
-    public SmtpEmailSender(
-            JavaMailSender mailSender,
-            @Value("${workout.mail.from:${spring.mail.username}}") String fromAddress) {
+    public SmtpEmailSender(JavaMailSender mailSender, String fromAddress) {
         this.mailSender = mailSender;
         this.fromAddress = fromAddress;
     }
@@ -45,7 +38,7 @@ public class SmtpEmailSender implements EmailSender {
     @Override
     public void sendVerificationCode(String email, String purpose, String code) {
         long startMs = System.currentTimeMillis();
-        // 关键入口：脱敏邮箱与用途，禁止打印授权码或完整明文码以外的密钥
+        // 关键入口：脱敏邮箱与用途，禁止打印授权码或验证码
         log.info("[邮箱验证码] smtp sendVerificationCode start purpose={}, email={}, from={}",
                 purpose, mask(email), mask(fromAddress));
         SimpleMailMessage message = new SimpleMailMessage();
@@ -62,7 +55,7 @@ public class SmtpEmailSender implements EmailSender {
                     purpose, mask(email), ex.getMessage());
             throw ex;
         }
-        // 关键结果：投递成功与耗时（不打印验证码，避免日志扩散）
+        // 关键结果：投递成功与耗时（不打印验证码）
         log.info("[邮箱验证码] smtp sendVerificationCode done purpose={}, email={}, elapsedMs={}",
                 purpose, mask(email), System.currentTimeMillis() - startMs);
     }
