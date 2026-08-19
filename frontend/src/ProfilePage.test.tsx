@@ -50,11 +50,12 @@ describe("ProfilePage", () => {
     localStorage.setItem("workout_token", "tok");
   });
 
-  it("shows three options on /profile without body or password fields", async () => {
+  it("shows four options on /profile without body or password fields", async () => {
     stubProfileFetch();
     renderProfile("/profile");
     expect(await screen.findByRole("button", { name: "身体资料" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "账号安全" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "报告记录" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "退出登录" })).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("例如 175")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "保存资料" })).not.toBeInTheDocument();
@@ -90,7 +91,6 @@ describe("ProfilePage", () => {
       json: async () => ({ code: 200, data: { nickname: null, heightCm: null, weightKg: null } }),
     });
     vi.stubGlobal("fetch", fetchMock);
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
     const user = userEvent.setup();
     renderProfile("/profile");
     await user.click(await screen.findByRole("button", { name: "账号安全" }));
@@ -99,17 +99,54 @@ describe("ProfilePage", () => {
     expect(screen.getByRole("button", { name: "注销账号" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "保存资料" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "注销账号" }));
-    expect(confirmSpy).toHaveBeenCalled();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "取消" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.some((call) => call[1]?.method === "DELETE")).toBe(false);
-    confirmSpy.mockRestore();
   });
 
-  it("clears token on logout from the option list", async () => {
+  it("clears token on logout from the option list after confirm", async () => {
     stubProfileFetch();
     const user = userEvent.setup();
     renderProfile("/profile");
     await user.click(await screen.findByRole("button", { name: "退出登录" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "确认" }));
     expect(localStorage.getItem("workout_token")).toBeNull();
+  });
+
+  it("keeps token when logout is cancelled", async () => {
+    stubProfileFetch();
+    const user = userEvent.setup();
+    renderProfile("/profile");
+    await user.click(await screen.findByRole("button", { name: "退出登录" }));
+    await user.click(await screen.findByRole("button", { name: "取消" }));
+    expect(localStorage.getItem("workout_token")).toBe("tok");
+    expect(await screen.findByTestId("location")).toHaveTextContent(/^\/profile$/);
+  });
+
+  it("opens reports page empty state from the option list", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        if (String(url).includes("/shareReports")) {
+          return { ok: true, status: 200, json: async () => ({ code: 200, data: { list: [] } }) };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ code: 200, data: { nickname: null, heightCm: null, weightKg: null } }),
+        };
+      }),
+    );
+    const user = userEvent.setup();
+    renderProfile("/profile");
+    await user.click(await screen.findByRole("button", { name: "报告记录" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent("/profile/reports");
+    expect(await screen.findByText("暂无分享报告")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "返回" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent(/^\/profile$/);
+    expect(screen.getByRole("button", { name: "报告记录" })).toBeInTheDocument();
   });
 
   it("shows CMS entry on account page for ADMIN only", async () => {
@@ -125,6 +162,23 @@ describe("ProfilePage", () => {
     renderProfile("/profile/account");
     await waitFor(() => expect(screen.getByRole("button", { name: "修改密码" })).toBeInTheDocument());
     expect(screen.queryByRole("link", { name: "后台管理" })).not.toBeInTheDocument();
+  });
+
+  it("cancels change password without submitting", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ code: 200, data: { nickname: null, heightCm: null, weightKg: null } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderProfile("/profile/account");
+    await user.click(await screen.findByRole("button", { name: "修改密码" }));
+    expect(await screen.findByRole("dialog")).toHaveTextContent("确认修改登录密码");
+    await user.click(screen.getByRole("button", { name: "取消" }));
+    expect(fetchMock.mock.calls.some((call) => call[1]?.method === "PUT" && String(call[0]).includes("/password"))).toBe(
+      false,
+    );
   });
 
   it("shows datetime defaulting to today and curve below the body form", async () => {

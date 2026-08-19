@@ -180,7 +180,7 @@ flowchart LR
 
 | 对象 | 关键字段 |
 | --- | --- |
-| User | id, username, passwordHash, createdAt |
+| User | id, username, email(可空唯一), passwordHash, createdAt |
 | DailyRecord | id, **userId**, type(`CONSUME`/`INTAKE`), content, recordedAt, createdAt |
 | Profile | id, **userId**（唯一）, nickname, heightCm, weightKg, updatedAt |
 | ProfileHistory | id, **userId**, changedAt, nickname, heightCm, weightKg |
@@ -194,10 +194,16 @@ flowchart LR
 | --- | --- | --- | --- |
 | 注册 | POST | `/api/v1/auth/register` | 公开 |
 | 登录 | POST | `/api/v1/auth/login` | 公开 |
+| 邮箱登录 | POST | `/api/v1/auth/loginByEmail` | 公开 |
+| 当前用户 | GET | `/api/v1/auth/me` | JWT |
+| 发邮箱验证码 | POST | `/api/v1/auth/email/sendCode` | LOGIN 公开；BIND/UNBIND 须 JWT |
+| 绑定邮箱 | POST | `/api/v1/auth/email/bind` | JWT |
+| 解绑邮箱 | POST | `/api/v1/auth/email/unbind` | JWT |
 | 新增记录 | POST | `/api/v1/dailyRecords` | JWT |
 | 按日查询 | GET | `/api/v1/dailyRecords?date=yyyy-MM-dd` | JWT |
 | 导出 xlsx | GET | `/api/v1/dailyRecords/exportCsv?date=`（或 yearMonth / from+to） | JWT |
 | 创建分享 | POST | `/api/v1/shareReports`（筛选参数同上） | JWT；落库后异步 AI，不阻塞 |
+| 本人分享列表 | GET | `/api/v1/shareReports` | JWT |
 | 公开报告 | GET | `/api/v1/reports/{id}` | 公开；含 advice + adviceStatus；就绪建议为 Markdown |
 | 查询资料 | GET | `/api/v1/profile` | JWT |
 | 保存资料 | PUT | `/api/v1/profile` | JWT |

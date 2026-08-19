@@ -7,6 +7,7 @@ type ApiEnvelope<T> = {
 function handleUnauthorized(): never {
   localStorage.removeItem("workout_token");
   localStorage.removeItem("workout_role");
+  localStorage.removeItem("workout_username");
   const redirect = encodeURIComponent(`${window.location.pathname || "/"}${window.location.search || ""}`);
   window.location.assign(`/login?redirect=${redirect}`);
   throw new Error("未登录或登录已过期");

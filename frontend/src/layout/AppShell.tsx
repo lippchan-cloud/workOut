@@ -1,4 +1,4 @@
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import type { MouseEvent, ReactNode } from "react";
 
@@ -9,10 +9,10 @@ const TABS = [
 ] as const;
 
 /**
- * 底部三 Tab 壳：未登录点击跳转登录并带 redirect。
+ * 底部三 Tab 壳：未登录点击跳转登录并带 redirect；顶栏展示账号或登录入口。
  */
 export function AppShell({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, username } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -23,6 +23,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginHref = `/login?redirect=${location.pathname || "/"}`;
+
   return (
     <div className="app-shell">
       <header className="app-shell__brand">
@@ -30,7 +32,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="app-shell__logo-mark" aria-hidden />
           workOut
         </div>
-        <span className="app-shell__tag">Train Log</span>
+        {isAuthenticated ? (
+          <Link to="/profile" className="app-shell__account" title={username || "账号"}>
+            {username || "账号"}
+          </Link>
+        ) : (
+          <Link to={loginHref} className="app-shell__account app-shell__account--login">
+            登录
+          </Link>
+        )}
       </header>
       <main className="app-shell__content">{children}</main>
       <nav className="app-shell__nav" aria-label="主导航">

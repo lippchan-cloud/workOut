@@ -34,4 +34,19 @@ public final class CurrentUser {
         log.info("[当前用户] require start userId={}, username={}", principal.getUserId(), principal.getUsername());
         return principal;
     }
+
+    /**
+     * 尝试读取当前认证主体；匿名请求返回 null，不抛 401。
+     *
+     * @return AuthPrincipal 或 null
+     */
+    public static AuthPrincipal find() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal principal)) {
+            log.info("[当前用户] find unauthenticated=true");
+            return null;
+        }
+        log.info("[当前用户] find start userId={}, username={}", principal.getUserId(), principal.getUsername());
+        return principal;
+    }
 }

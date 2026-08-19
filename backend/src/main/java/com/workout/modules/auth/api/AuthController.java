@@ -3,11 +3,13 @@ package com.workout.modules.auth.api;
 import com.workout.common.ApiRequest;
 import com.workout.common.ApiResponse;
 import com.workout.modules.auth.application.AuthService;
+import com.workout.modules.auth.application.EmailAuthService;
 import com.workout.modules.auth.domain.AuthPrincipal;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,12 +27,14 @@ public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
+    private final EmailAuthService emailAuthService;
 
     /**
-     * 注入认证应用服务。
+     * 注入认证与邮箱应用服务。
      */
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, EmailAuthService emailAuthService) {
         this.authService = authService;
+        this.emailAuthService = emailAuthService;
     }
 
     /**
@@ -60,6 +64,70 @@ public class AuthController {
         AuthTokenResponse data = authService.login(request.getUsername(), request.getPassword());
         // 关键实体：登录成功后的用户标识
         log.info("[鉴权登录] AuthController.login done userId={}, username={}", data.getUserId(), data.getUsername());
+        return ApiResponse.ok(data);
+    }
+
+    /**
+     * 当前登录用户资料（含绑定邮箱）。
+     */
+    @GetMapping("/me")
+    public ApiResponse<AuthMeResponse> me() {
+        AuthPrincipal principal = CurrentUser.require();
+        log.info("[鉴权会话] AuthController.me start userId={}", principal.getUserId());
+        AuthMeResponse data = authService.me(principal.getUserId());
+        log.info("[鉴权会话] AuthController.me done userId={}, emailBound={}", principal.getUserId(), data.getEmail() != null);
+        return ApiResponse.ok(data);
+    }
+
+    /**
+     * 发送 4 位邮箱验证码；LOGIN 可匿名，BIND/UNBIND 须登录。
+     */
+    @PostMapping("/email/sendCode")
+    public ApiResponse<Void> sendEmailCode(@Valid @RequestBody ApiRequest<SendEmailCodeRequest> body) {
+        SendEmailCodeRequest request = body.getRequest();
+        AuthPrincipal principal = CurrentUser.find();
+        log.info("[邮箱验证码] AuthController.sendEmailCode start purpose={}, hasPrincipal={}",
+                request.getPurpose(), principal != null);
+        emailAuthService.sendCode(request.getEmail(), request.getPurpose(), principal);
+        log.info("[邮箱验证码] AuthController.sendEmailCode done purpose={}", request.getPurpose());
+        return ApiResponse.ok(null);
+    }
+
+    /**
+     * 绑定邮箱。
+     */
+    @PostMapping("/email/bind")
+    public ApiResponse<Void> bindEmail(@Valid @RequestBody ApiRequest<BindEmailRequest> body) {
+        AuthPrincipal principal = CurrentUser.require();
+        BindEmailRequest request = body.getRequest();
+        log.info("[邮箱绑定] AuthController.bindEmail start userId={}", principal.getUserId());
+        emailAuthService.bind(principal.getUserId(), request.getEmail(), request.getCode());
+        log.info("[邮箱绑定] AuthController.bindEmail done userId={}", principal.getUserId());
+        return ApiResponse.ok(null);
+    }
+
+    /**
+     * 解绑邮箱。
+     */
+    @PostMapping("/email/unbind")
+    public ApiResponse<Void> unbindEmail(@Valid @RequestBody ApiRequest<UnbindEmailRequest> body) {
+        AuthPrincipal principal = CurrentUser.require();
+        UnbindEmailRequest request = body.getRequest();
+        log.info("[邮箱解绑] AuthController.unbindEmail start userId={}", principal.getUserId());
+        emailAuthService.unbind(principal.getUserId(), request.getCode());
+        log.info("[邮箱解绑] AuthController.unbindEmail done userId={}", principal.getUserId());
+        return ApiResponse.ok(null);
+    }
+
+    /**
+     * 已绑定邮箱 + 4 位验证码登录。
+     */
+    @PostMapping("/loginByEmail")
+    public ApiResponse<AuthTokenResponse> loginByEmail(@Valid @RequestBody ApiRequest<EmailLoginRequest> body) {
+        EmailLoginRequest request = body.getRequest();
+        log.info("[邮箱登录] AuthController.loginByEmail start");
+        AuthTokenResponse data = emailAuthService.loginByEmail(request.getEmail(), request.getCode());
+        log.info("[邮箱登录] AuthController.loginByEmail done userId={}, username={}", data.getUserId(), data.getUsername());
         return ApiResponse.ok(data);
     }
 

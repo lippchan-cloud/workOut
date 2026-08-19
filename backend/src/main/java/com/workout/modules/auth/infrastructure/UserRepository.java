@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * 用户持久化仓储（数据访问层）。
- * 仅负责按用户名查询与存在性判断，不包含鉴权业务规则。
+ * 按用户名或绑定邮箱查询，不包含鉴权业务规则。
  */
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
@@ -31,4 +31,14 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @return true 表示已存在
      */
     boolean existsByUsername(String username);
+
+    /**
+     * 按绑定邮箱加载用户。
+     */
+    Optional<UserEntity> findByEmail(String email);
+
+    /**
+     * 判断邮箱是否已被绑定。
+     */
+    boolean existsByEmail(String email);
 }

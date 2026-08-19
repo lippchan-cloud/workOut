@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 
 function LocationProbe() {
@@ -33,6 +33,30 @@ describe("AppShell", () => {
     expect(screen.getByRole("button", { name: "记录" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "日历" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "我的" })).toBeInTheDocument();
+  });
+
+  it("shows login in the header when unauthenticated", async () => {
+    const user = userEvent.setup();
+    renderApp("/");
+    expect(screen.getByRole("link", { name: "登录" })).toHaveAttribute("href", "/login?redirect=/");
+    await user.click(screen.getByRole("link", { name: "登录" }));
+    expect(await screen.findByTestId("location")).toHaveTextContent("/login?redirect=/");
+  });
+
+  it("shows username in the header when authenticated", () => {
+    localStorage.setItem("workout_token", "test-token");
+    localStorage.setItem("workout_username", "alice");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ code: 200, data: { username: "alice", role: "USER", email: null } }),
+      }),
+    );
+    renderApp("/", true);
+    expect(screen.getByRole("link", { name: "alice" })).toHaveAttribute("href", "/profile");
+    expect(screen.queryByRole("link", { name: "登录" })).not.toBeInTheDocument();
   });
 
   it("allows authenticated tab switching without login redirect", async () => {

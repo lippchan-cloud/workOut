@@ -2,8 +2,10 @@ package com.workout.modules.auth.application;
 
 import com.workout.common.BusinessException;
 import com.workout.config.AdminProperties;
+import com.workout.modules.auth.api.AuthMeResponse;
 import com.workout.modules.auth.api.AuthTokenResponse;
 import com.workout.modules.auth.domain.UserRole;
+import com.workout.modules.auth.infrastructure.EmailCodeRepository;
 import com.workout.modules.auth.infrastructure.JwtService;
 import com.workout.modules.auth.infrastructure.UserEntity;
 import com.workout.modules.auth.infrastructure.UserRepository;
@@ -39,6 +41,7 @@ public class AuthService {
     private final ShareReportRepository shareReportRepository;
     private final ApiKeyAssignmentService apiKeyAssignmentService;
     private final UserApiKeyRepository userApiKeyRepository;
+    private final EmailCodeRepository emailCodeRepository;
 
     /**
      * 注入注册、改密与注销所需依赖。
@@ -53,7 +56,8 @@ public class AuthService {
             ProfileHistoryRepository profileHistoryRepository,
             ShareReportRepository shareReportRepository,
             ApiKeyAssignmentService apiKeyAssignmentService,
-            UserApiKeyRepository userApiKeyRepository) {
+            UserApiKeyRepository userApiKeyRepository,
+            EmailCodeRepository emailCodeRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
@@ -64,6 +68,7 @@ public class AuthService {
         this.shareReportRepository = shareReportRepository;
         this.apiKeyAssignmentService = apiKeyAssignmentService;
         this.userApiKeyRepository = userApiKeyRepository;
+        this.emailCodeRepository = emailCodeRepository;
     }
 
     /**
@@ -135,7 +140,25 @@ public class AuthService {
         // 关键实体：核对通过后的用户标识
         log.info("[鉴权登录] loaded entityType=UserEntity id={}, username={}, role={}",
                 user.getId(), user.getUsername(), user.getRole());
-        // 登录时按引导名单纠偏角色，避免漏升管理员
+        // 登录时按引导名单纠偏角色并签发 JWT
+        AuthTokenResponse token = completeLogin(user);
+        log.info(
+                "[鉴权登录] login done success=true userId={}, role={}, elapsedMs={}",
+                user.getId(),
+                user.getRole(),
+                System.currentTimeMillis() - startMs);
+        return token;
+    }
+
+    /**
+     * 对已核对通过的用户纠偏角色并签发 JWT，供密码登录与邮箱登录共用。
+     *
+     * @param user 已通过凭证校验的用户实体
+     * @return token 与用户标识
+     */
+    @Transactional
+    public AuthTokenResponse completeLogin(UserEntity user) {
+        log.info("[鉴权登录] completeLogin start userId={}, username={}", user.getId(), user.getUsername());
         UserRole resolved = resolveRole(user.getUsername());
         if (resolved == UserRole.ADMIN && user.getRole() != UserRole.ADMIN) {
             user.setRole(UserRole.ADMIN);
@@ -143,14 +166,32 @@ public class AuthService {
             userRepository.save(user);
             log.info("[鉴权登录] promoted entityType=UserEntity id={}, role={}", user.getId(), user.getRole());
         }
-        // 登录成功签发 JWT
         String token = jwtService.issueToken(user.getId(), user.getUsername());
         log.info(
-                "[鉴权登录] login done success=true userId={}, role={}, elapsedMs={}",
+                "[鉴权登录] completeLogin done userId={}, role={}",
                 user.getId(),
-                user.getRole(),
-                System.currentTimeMillis() - startMs);
+                user.getRole());
         return new AuthTokenResponse(token, user.getId(), user.getUsername(), user.getRole());
+    }
+
+    /**
+     * 返回当前用户资料（含绑定邮箱）。
+     *
+     * @param userId JWT 用户主键
+     * @return 不含密码的会话快照
+     */
+    @Transactional(readOnly = true)
+    public AuthMeResponse me(Long userId) {
+        log.info("[鉴权会话] me start userId={}", userId);
+        UserEntity user = userRepository.findById(userId).orElseThrow(() -> new BusinessException("用户不存在"));
+        log.info(
+                "[鉴权会话] loaded entityType=UserEntity id={}, username={}, emailBound={}",
+                user.getId(),
+                user.getUsername(),
+                user.getEmail() != null);
+        AuthMeResponse data = new AuthMeResponse(user.getId(), user.getUsername(), user.getRole(), user.getEmail());
+        log.info("[鉴权会话] me done userId={}", userId);
+        return data;
     }
 
     /**
@@ -187,6 +228,12 @@ public class AuthService {
         log.info("[鉴权注销] deleteMe start userId={}", userId);
         UserEntity user = userRepository.findById(userId).orElseThrow(() -> new BusinessException("用户不存在"));
         log.info("[鉴权注销] loaded entityType=UserEntity id={}, username={}", user.getId(), user.getUsername());
+        // 验证码按用户与邮箱批量清掉，禁止循环 deleteById
+        emailCodeRepository.deleteByUserId(userId);
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            emailCodeRepository.deleteByEmail(user.getEmail());
+        }
+        log.info("[鉴权注销] deleted email codes userId={}", userId);
         // 先按 userId 批量删从属数据，禁止循环 deleteById
         dailyRecordRepository.deleteByUserId(userId);
         profileHistoryRepository.deleteByUserId(userId);

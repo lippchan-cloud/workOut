@@ -5,7 +5,7 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { AuthProvider } from "./auth/AuthContext";
 import { RecordFormPage, RecordPage, RecordTypePage } from "./pages/RecordPage";
 import { CalendarPage } from "./pages/CalendarPage";
-import { ProfileAccountPage, ProfileBodyPage, ProfilePage } from "./pages/ProfilePage";
+import { ProfileAccountPage, ProfileBodyPage, ProfilePage, ProfileReportsPage } from "./pages/ProfilePage";
 import { RecordDetailPage } from "./pages/RecordDetailPage";
 import { CmsLayout } from "./pages/CmsLayout";
 import { CmsOverviewPage } from "./pages/CmsOverviewPage";
@@ -49,6 +49,7 @@ export default function App() {
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/profile/body" element={<ProfileBodyPage />} />
                 <Route path="/profile/account" element={<ProfileAccountPage />} />
+                <Route path="/profile/reports" element={<ProfileReportsPage />} />
               </Routes>
             </AppShell>
           }

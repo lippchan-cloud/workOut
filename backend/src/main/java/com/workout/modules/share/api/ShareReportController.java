@@ -6,9 +6,12 @@ import com.workout.modules.auth.domain.AuthPrincipal;
 import com.workout.modules.share.application.ShareReportService;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,6 +34,18 @@ public class ShareReportController {
      */
     public ShareReportController(ShareReportService shareReportService) {
         this.shareReportService = shareReportService;
+    }
+
+    /**
+     * 列出当前用户已创建的分享报告。
+     */
+    @GetMapping
+    public ApiResponse<Map<String, Object>> listMine() {
+        AuthPrincipal principal = CurrentUser.require();
+        log.info("[分享] ShareReportController.listMine start userId={}", principal.getUserId());
+        List<MyShareListItemResponse> list = shareReportService.listMine(principal.getUserId());
+        log.info("[分享] ShareReportController.listMine done userId={}, size={}", principal.getUserId(), list.size());
+        return ApiResponse.ok(Map.of("list", list));
     }
 
     /**

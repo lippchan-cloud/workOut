@@ -43,6 +43,7 @@ class FlywayMigrationTest {
                         "work_out_profile",
                         "work_out_profile_history",
                         "work_out_share_report",
-                        "work_out_api_key");
+                        "work_out_api_key",
+                        "work_out_email_code");
     }
 }

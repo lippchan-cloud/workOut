@@ -13,7 +13,7 @@ import com.workout.modules.auth.domain.UserRole;
 
 /**
  * 注册用户持久化实体（基础设施/持久化层）。
- * 对应表 work_out_user；仅存密码哈希，禁止承载明文密码或 JWT。
+ * 对应表 work_out_user；仅存密码哈希与可选绑定邮箱，禁止承载明文密码或 JWT。
  */
 @Entity
 @Table(name = "work_out_user")
@@ -25,6 +25,9 @@ public class UserEntity {
 
     @Column(nullable = false, unique = true, length = 32)
     private String username;
+
+    @Column(unique = true, length = 128)
+    private String email;
 
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
@@ -62,6 +65,20 @@ public class UserEntity {
      */
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    /**
+     * 绑定邮箱；未绑定则为 null。
+     */
+    public String getEmail() {
+        return email;
+    }
+
+    /**
+     * 设置绑定邮箱。
+     */
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     /**

@@ -21,11 +21,11 @@ export function RegisterPage() {
     }
     setError("");
     try {
-      const data = await apiPost<{ token: string; role?: string }>("/api/v1/auth/register", {
+      const data = await apiPost<{ token: string; role?: string; username?: string }>("/api/v1/auth/register", {
         username: username.trim(),
         password,
       });
-      setSession(data.token, data.role);
+      setSession(data.token, data.role, data.username);
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "注册失败");

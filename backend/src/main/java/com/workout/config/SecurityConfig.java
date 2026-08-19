@@ -16,7 +16,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 /**
  * 安全与密码编码配置（配置层）。
- * 注册/登录与健康检查放行；其余 /api/v1/** 必须携带有效 Bearer JWT。
+ * 注册/登录/邮箱发码与健康检查放行；其余 /api/v1/** 必须携带有效 Bearer JWT。
  * CMS 账户列表不再公开放行，须 authenticated + 业务层 ADMIN 校验。
  */
 @Configuration
@@ -52,7 +52,12 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/health")
+                        .requestMatchers(
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/loginByEmail",
+                                "/api/v1/auth/email/sendCode",
+                                "/api/v1/health")
                         .permitAll()
                         .requestMatchers("/api/v1/reports/**")
                         .permitAll()
@@ -63,7 +68,7 @@ public class SecurityConfig {
                 .exceptionHandling(handling -> handling.authenticationEntryPoint(jsonAuthEntryPoint))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         SecurityFilterChain chain = http.build();
-        log.info("[安全配置] securityFilterChain done public=/api/v1/auth/register,/api/v1/auth/login,/api/v1/health,/api/v1/reports/**");
+        log.info("[安全配置] securityFilterChain done public=/api/v1/auth/register,/api/v1/auth/login,/api/v1/auth/loginByEmail,/api/v1/auth/email/sendCode,/api/v1/health,/api/v1/reports/**");
         return chain;
     }
 }

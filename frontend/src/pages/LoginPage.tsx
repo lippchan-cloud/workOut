@@ -3,19 +3,30 @@ import { FormEvent, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { apiPost } from "../api/client";
 
+type LoginMode = "password" | "email";
+
 /**
- * 登录页：校验空用户名；成功后写入 token 并按 redirect 回跳。
+ * 登录页：用户名密码或已绑定邮箱验证码；成功后写入 token 并按 redirect 回跳。
  */
 export function LoginPage() {
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get("redirect") || "/";
   const { setSession } = useAuth();
   const navigate = useNavigate();
+  const [mode, setMode] = useState<LoginMode>("password");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [codeMessage, setCodeMessage] = useState("");
 
-  const onSubmit = async (event: FormEvent) => {
+  const applySession = (data: { token: string; role?: string; username?: string }) => {
+    setSession(data.token, data.role, data.username);
+    navigate(redirect);
+  };
+
+  const onPasswordSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!username.trim()) {
       setError("请填写用户名");
@@ -23,12 +34,48 @@ export function LoginPage() {
     }
     setError("");
     try {
-      const data = await apiPost<{ token: string; role?: string }>("/api/v1/auth/login", {
+      const data = await apiPost<{ token: string; role?: string; username?: string }>("/api/v1/auth/login", {
         username: username.trim(),
         password,
       });
-      setSession(data.token, data.role);
-      navigate(redirect);
+      applySession(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "登录失败");
+    }
+  };
+
+  const onSendCode = async () => {
+    setError("");
+    setCodeMessage("");
+    if (!email.trim()) {
+      setError("请填写邮箱");
+      return;
+    }
+    try {
+      await apiPost("/api/v1/auth/email/sendCode", { email: email.trim(), purpose: "LOGIN" });
+      setCodeMessage("验证码已发送");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "发送失败");
+    }
+  };
+
+  const onEmailSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!email.trim()) {
+      setError("请填写邮箱");
+      return;
+    }
+    if (!/^\d{4}$/.test(code.trim())) {
+      setError("请填写4位验证码");
+      return;
+    }
+    setError("");
+    try {
+      const data = await apiPost<{ token: string; role?: string; username?: string }>(
+        "/api/v1/auth/loginByEmail",
+        { email: email.trim(), code: code.trim() },
+      );
+      applySession(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败");
     }
@@ -47,29 +94,83 @@ export function LoginPage() {
         <div data-testid="login-redirect" hidden>
           {redirect}
         </div>
-        <form onSubmit={onSubmit}>
-          <label>
-            用户名
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-            />
-          </label>
-          <label>
-            密码
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-          </label>
-          {error ? <p role="alert">{error}</p> : null}
-          <button type="submit" className="btn btn-primary btn-block">
-            登录
+        <div className="auth-mode-switch">
+          <button
+            type="button"
+            className={mode === "password" ? "btn btn-primary" : "btn btn-ghost"}
+            onClick={() => {
+              setMode("password");
+              setError("");
+            }}
+          >
+            用户名登录
           </button>
-        </form>
+          <button
+            type="button"
+            className={mode === "email" ? "btn btn-primary" : "btn btn-ghost"}
+            onClick={() => {
+              setMode("email");
+              setError("");
+            }}
+          >
+            邮箱登录
+          </button>
+        </div>
+        {mode === "password" ? (
+          <form onSubmit={onPasswordSubmit}>
+            <label>
+              用户名
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+              />
+            </label>
+            <label>
+              密码
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </label>
+            {error ? <p role="alert">{error}</p> : null}
+            <button type="submit" className="btn btn-primary btn-block">
+              登录
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={onEmailSubmit}>
+            <label>
+              邮箱
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                inputMode="email"
+              />
+            </label>
+            <label>
+              验证码
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="4位数字"
+              />
+            </label>
+            {codeMessage ? <p className="flash">{codeMessage}</p> : null}
+            {error ? <p role="alert">{error}</p> : null}
+            <button type="button" className="btn btn-ghost btn-block" onClick={onSendCode}>
+              发送验证码
+            </button>
+            <button type="submit" className="btn btn-primary btn-block">
+              登录
+            </button>
+          </form>
+        )}
         <p className="auth-card__footer">
           还没有账号？ <Link to="/register">去注册</Link>
         </p>

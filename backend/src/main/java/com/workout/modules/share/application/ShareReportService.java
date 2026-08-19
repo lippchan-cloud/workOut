@@ -17,6 +17,7 @@ import com.workout.modules.profile.infrastructure.ProfileRepository;
 import com.workout.modules.record.api.DailyRecordResponse;
 import com.workout.modules.record.application.DailyRecordService;
 import com.workout.modules.record.domain.RecordQueryPeriod;
+import com.workout.modules.share.api.MyShareListItemResponse;
 import com.workout.modules.share.api.ShareCreateResponse;
 import com.workout.modules.share.api.ShareSnapshotResponse;
 import com.workout.modules.share.api.ShareSnapshotResponse.ShareBodyPoint;
@@ -170,6 +171,24 @@ public class ShareReportService {
             log.error("[分享] getPublic failed code=500 parseSnapshot id={}", row.getId());
             throw new IllegalStateException("报告快照损坏", ex);
         }
+    }
+
+    /**
+     * 列出当前用户已有分享，按创建时间倒序；一次查询，禁止循环。
+     *
+     * @param userId JWT 用户主键
+     * @return 公开 token 与范围摘要
+     */
+    @Transactional(readOnly = true)
+    public List<MyShareListItemResponse> listMine(Long userId) {
+        log.info("[分享] listMine start userId={}", userId);
+        List<ShareReportEntity> rows = shareReportRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        List<MyShareListItemResponse> list = rows.stream()
+                .map(row -> new MyShareListItemResponse(
+                        row.getToken(), row.getRangeFrom(), row.getRangeTo(), row.getCreatedAt()))
+                .toList();
+        log.info("[分享] listMine done userId={}, size={}", userId, list.size());
+        return list;
     }
 
     /**

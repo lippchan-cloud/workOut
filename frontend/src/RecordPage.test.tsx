@@ -145,7 +145,7 @@ describe("RecordPage", () => {
     await openConsumeForm(user);
     await user.click(screen.getByRole("button", { name: "保存消耗" }));
     expect(screen.getByText("请填写内容")).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/dailyRecords"))).toBe(false);
   });
 
   it("offers 再记一条 and 回日历 after successful save", async () => {
