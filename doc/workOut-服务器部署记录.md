@@ -139,6 +139,31 @@ curl -sS http://150.158.83.85:18080/api/v1/health
 | 已完成 | Nginx | 直连 18080，未改配置 |
 | 已完成 | 历史报告 URL 基址 | 库内只存 token，未 UPDATE；依赖 WORKOUT_PUBLIC_BASE_URL |
 
+## 地铁调价页独立镜像
+
+与主应用 `workout-app`（18080）**完全隔离**，独立镜像、独立端口。
+
+- **运维 SOP（推荐查阅）**：[`doc/metro-fare-部署SOP.md`](metro-fare-部署SOP.md)（同步 / compose 构建启动 / 验证 / 常用命令 / 故障排查）
+- 页面与本机构建说明：`static/metro-fare/README.md`
+
+| 项 | 值 |
+| --- | --- |
+| 镜像 | `metro-fare:local`（compose）；亦可 `metro-fare:amd64` |
+| 容器名 | `metro-fare` |
+| 宿主机端口 | **8765** |
+| 容器端口 | 80（nginx） |
+| Dockerfile | `static/metro-fare/Dockerfile` |
+| Compose | `docker-compose.metro-fare.yml`（不并入主 compose） |
+
+推荐启动（服务器 `~/workOut-build`，勿打扰 `workout-app`）：
+
+```bash
+cd ~/workOut-build
+sudo docker compose -f docker-compose.metro-fare.yml up -d --build
+curl -sS http://127.0.0.1:8765/ | head
+```
+
+访问：`http://150.158.83.85:8765/`（外网需安全组放行 TCP **8765**）
 ## 失败记录（如有）
 
 - 本机 `docker build --platform linux/amd64` 在未配置阿里云前，长时间卡在 `mvn dependency:go-offline`；已停止并改在服务器原生构建（配合阿里云镜像后约 41s 完成该步）。

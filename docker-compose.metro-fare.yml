@@ -1,0 +1,16 @@
+# 上海地铁调价静态页 — 独立于 workOut 主 compose
+# 用法（仓库根目录）：
+#   docker compose -f docker-compose.metro-fare.yml up -d --build
+#   访问 http://127.0.0.1:8765/
+#   docker compose -f docker-compose.metro-fare.yml down
+
+services:
+  metro-fare:
+    build:
+      context: ./static/metro-fare
+      dockerfile: Dockerfile
+    image: metro-fare:local
+    container_name: metro-fare
+    ports:
+      - "8765:80"
+    restart: unless-stopped
