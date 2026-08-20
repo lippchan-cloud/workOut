@@ -4,9 +4,13 @@ import { useAuth } from "../auth/AuthContext";
 import { apiPost } from "../api/client";
 
 type LoginMode = "password" | "email";
+type EmailLoginStep = "email" | "code";
+
+const CODE_SENT_HINT = "验证码已发送，请查收邮箱";
 
 /**
  * 登录页：用户名密码或已绑定邮箱验证码；成功后写入 token 并按 redirect 回跳。
+ * 邮箱登录递进：先填邮箱发码，成功后再出现验证码与登录。
  */
 export function LoginPage() {
   const [searchParams] = useSearchParams();
@@ -18,6 +22,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  const [emailStep, setEmailStep] = useState<EmailLoginStep>("email");
   const [error, setError] = useState("");
   const [codeMessage, setCodeMessage] = useState("");
 
@@ -53,7 +58,8 @@ export function LoginPage() {
     }
     try {
       await apiPost("/api/v1/auth/email/sendCode", { email: email.trim(), purpose: "LOGIN" });
-      setCodeMessage("验证码已发送");
+      setEmailStep("code");
+      setCodeMessage(CODE_SENT_HINT);
     } catch (err) {
       setError(err instanceof Error ? err.message : "发送失败");
     }
@@ -61,6 +67,10 @@ export function LoginPage() {
 
   const onEmailSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (emailStep !== "code") {
+      await onSendCode();
+      return;
+    }
     if (!email.trim()) {
       setError("请填写邮箱");
       return;
@@ -101,6 +111,7 @@ export function LoginPage() {
             onClick={() => {
               setMode("password");
               setError("");
+              setCodeMessage("");
             }}
           >
             用户名登录
@@ -111,6 +122,9 @@ export function LoginPage() {
             onClick={() => {
               setMode("email");
               setError("");
+              setCodeMessage("");
+              setEmailStep("email");
+              setCode("");
             }}
           >
             邮箱登录
@@ -146,29 +160,44 @@ export function LoginPage() {
               邮箱
               <input
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailStep === "code") {
+                    setEmailStep("email");
+                    setCode("");
+                    setCodeMessage("");
+                  }
+                }}
                 autoComplete="email"
                 inputMode="email"
               />
             </label>
-            <label>
-              验证码
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                inputMode="numeric"
-                maxLength={4}
-                placeholder="4位数字"
-              />
-            </label>
-            {codeMessage ? <p className="flash">{codeMessage}</p> : null}
+            {emailStep === "email" ? (
+              <button type="button" className="btn btn-ghost btn-block" onClick={onSendCode}>
+                发送验证码
+              </button>
+            ) : (
+              <>
+                {codeMessage ? <p className="flash">{codeMessage}</p> : null}
+                <label>
+                  验证码
+                  <input
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="4位数字"
+                  />
+                </label>
+                <button type="button" className="btn btn-ghost btn-block" onClick={onSendCode}>
+                  发送验证码
+                </button>
+                <button type="submit" className="btn btn-primary btn-block">
+                  登录
+                </button>
+              </>
+            )}
             {error ? <p role="alert">{error}</p> : null}
-            <button type="button" className="btn btn-ghost btn-block" onClick={onSendCode}>
-              发送验证码
-            </button>
-            <button type="submit" className="btn btn-primary btn-block">
-              登录
-            </button>
           </form>
         )}
         <p className="auth-card__footer">

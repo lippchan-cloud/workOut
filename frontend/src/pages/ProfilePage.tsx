@@ -176,8 +176,13 @@ function nowDatetimeLocal(): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+type EmailPanelStep = "entry" | "email" | "code";
+
+const CODE_SENT_HINT = "验证码已发送，请查收邮箱";
+
 /**
- * 「我的」三级：改密 / 邮箱绑定解绑 / 注销；ADMIN 可见 CMS。
+ * 「我的」三级：改密 / 邮箱绑定解绑 / 注销分卡；邮箱递进，不与改密注销挤成一块。
+ * ADMIN 可见 CMS。
  */
 export function ProfileAccountPage() {
   const { isAuthenticated, isAdmin, clearToken } = useAuth();
@@ -189,6 +194,7 @@ export function ProfileAccountPage() {
   const [bindEmail, setBindEmail] = useState("");
   const [bindCode, setBindCode] = useState("");
   const [unbindCode, setUnbindCode] = useState("");
+  const [emailStep, setEmailStep] = useState<EmailPanelStep>("entry");
   const [emailMessage, setEmailMessage] = useState("");
   const [confirm, setConfirm] = useState<ConfirmSpec | null>(null);
 
@@ -205,6 +211,14 @@ export function ProfileAccountPage() {
         setEmail(null);
       });
   }, [isAuthenticated, navigate]);
+
+  const resetEmailPanel = () => {
+    setEmailStep("entry");
+    setBindEmail("");
+    setBindCode("");
+    setUnbindCode("");
+    setEmailMessage("");
+  };
 
   const onChangePassword = (event: FormEvent) => {
     event.preventDefault();
@@ -226,13 +240,26 @@ export function ProfileAccountPage() {
   };
 
   const onSendBindCode = async () => {
+    if (!bindEmail.trim()) {
+      setEmailMessage("请填写邮箱");
+      return;
+    }
     setEmailMessage("");
-    await apiPost("/api/v1/auth/email/sendCode", { email: bindEmail.trim(), purpose: "BIND" });
-    setEmailMessage("验证码已发送");
+    try {
+      await apiPost("/api/v1/auth/email/sendCode", { email: bindEmail.trim(), purpose: "BIND" });
+      setEmailStep("code");
+      setEmailMessage(CODE_SENT_HINT);
+    } catch (err) {
+      setEmailMessage(err instanceof Error ? err.message : "发送失败");
+    }
   };
 
   const onBindEmail = (event: FormEvent) => {
     event.preventDefault();
+    if (!/^\d{4}$/.test(bindCode.trim())) {
+      setEmailMessage("请填写4位验证码");
+      return;
+    }
     setConfirm({
       title: "绑定邮箱",
       message: `确认将邮箱绑定为 ${bindEmail.trim()}？绑定后可用邮箱验证码登录。`,
@@ -242,22 +269,32 @@ export function ProfileAccountPage() {
         setEmail(bindEmail.trim().toLowerCase());
         setBindEmail("");
         setBindCode("");
+        setEmailStep("entry");
         setEmailMessage("邮箱已绑定");
       },
     });
   };
 
-  const onSendUnbindCode = async () => {
+  const onStartUnbind = async () => {
     if (!email) {
       return;
     }
     setEmailMessage("");
-    await apiPost("/api/v1/auth/email/sendCode", { email, purpose: "UNBIND" });
-    setEmailMessage("验证码已发送");
+    try {
+      await apiPost("/api/v1/auth/email/sendCode", { email, purpose: "UNBIND" });
+      setEmailStep("code");
+      setEmailMessage(CODE_SENT_HINT);
+    } catch (err) {
+      setEmailMessage(err instanceof Error ? err.message : "发送失败");
+    }
   };
 
   const onUnbindEmail = (event: FormEvent) => {
     event.preventDefault();
+    if (!/^\d{4}$/.test(unbindCode.trim())) {
+      setEmailMessage("请填写4位验证码");
+      return;
+    }
     setConfirm({
       title: "解绑邮箱",
       message: "确认解绑邮箱？解绑后将无法用该邮箱验证码登录。",
@@ -266,6 +303,7 @@ export function ProfileAccountPage() {
         await apiPost("/api/v1/auth/email/unbind", { code: unbindCode.trim() });
         setEmail(null);
         setUnbindCode("");
+        setEmailStep("entry");
         setEmailMessage("邮箱已解绑");
       },
     });
@@ -289,58 +327,81 @@ export function ProfileAccountPage() {
       <BackToProfile />
       <p className="page__eyebrow">Account</p>
       <h1 className="page__title">账号安全</h1>
-      <p className="page__subtitle">改密、邮箱与注销。</p>
+      <p className="page__subtitle">先选一项，再填写。</p>
+      {isAdmin ? (
+        <p>
+          <Link to="/cms">后台管理</Link>
+        </p>
+      ) : null}
+      <form className="card" onSubmit={onChangePassword}>
+        <label>
+          当前密码
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            autoComplete="current-password"
+          />
+        </label>
+        <label>
+          新密码
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            autoComplete="new-password"
+          />
+        </label>
+        <button type="submit" className="btn btn-primary btn-block">
+          修改密码
+        </button>
+        {passwordMessage ? <p className="flash">{passwordMessage}</p> : null}
+      </form>
       <section className="card stack">
-        {isAdmin ? <Link to="/cms">后台管理</Link> : null}
-        <form onSubmit={onChangePassword}>
-          <label>
-            当前密码
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-          </label>
-          <label>
-            新密码
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-            />
-          </label>
-          <button type="submit" className="btn btn-primary btn-block">
-            修改密码
-          </button>
-          {passwordMessage ? <p className="flash">{passwordMessage}</p> : null}
-        </form>
         {email ? (
-          <form onSubmit={onUnbindEmail}>
-            <p>
-              已绑定邮箱：<strong>{email}</strong>
-            </p>
-            <label>
-              验证码
-              <input
-                value={unbindCode}
-                onChange={(e) => setUnbindCode(e.target.value)}
-                inputMode="numeric"
-                maxLength={4}
-                placeholder="4位数字"
-              />
-            </label>
-            <button type="button" className="btn btn-ghost btn-block" onClick={onSendUnbindCode}>
-              发送解绑验证码
+          emailStep === "entry" ? (
+            <>
+              <p>
+                已绑定邮箱：<strong>{email}</strong>
+              </p>
+              {emailMessage ? <p className="flash">{emailMessage}</p> : null}
+              <button type="button" className="btn btn-ghost btn-block" onClick={onStartUnbind}>
+                解绑邮箱
+              </button>
+            </>
+          ) : (
+            <form onSubmit={onUnbindEmail}>
+              <p>
+                已绑定邮箱：<strong>{email}</strong>
+              </p>
+              {emailMessage ? <p className={emailMessage === CODE_SENT_HINT ? "flash" : "flash flash--error"}>{emailMessage}</p> : null}
+              <label>
+                验证码
+                <input
+                  value={unbindCode}
+                  onChange={(e) => setUnbindCode(e.target.value)}
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="4位数字"
+                />
+              </label>
+              <button type="submit" className="btn btn-ghost btn-block">
+                确认解绑
+              </button>
+              <button type="button" className="btn btn-ghost btn-block" onClick={resetEmailPanel}>
+                取消
+              </button>
+            </form>
+          )
+        ) : emailStep === "entry" ? (
+          <>
+            {emailMessage ? <p className="flash">{emailMessage}</p> : null}
+            <button type="button" className="btn btn-ghost btn-block" onClick={() => setEmailStep("email")}>
+              绑定邮箱
             </button>
-            <button type="submit" className="btn btn-ghost btn-block">
-              解绑邮箱
-            </button>
-          </form>
+          </>
         ) : (
           <form onSubmit={onBindEmail}>
-            <p>尚未绑定邮箱</p>
             <label>
               邮箱
               <input
@@ -350,25 +411,40 @@ export function ProfileAccountPage() {
                 placeholder="name@example.com"
               />
             </label>
-            <label>
-              验证码
-              <input
-                value={bindCode}
-                onChange={(e) => setBindCode(e.target.value)}
-                inputMode="numeric"
-                maxLength={4}
-                placeholder="4位数字"
-              />
-            </label>
-            <button type="button" className="btn btn-ghost btn-block" onClick={onSendBindCode}>
-              发送绑定验证码
-            </button>
-            <button type="submit" className="btn btn-ghost btn-block">
-              绑定邮箱
+            {emailStep === "code" ? (
+              <>
+                {emailMessage ? (
+                  <p className={emailMessage === CODE_SENT_HINT ? "flash" : "flash flash--error"}>{emailMessage}</p>
+                ) : null}
+                <label>
+                  验证码
+                  <input
+                    value={bindCode}
+                    onChange={(e) => setBindCode(e.target.value)}
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="4位数字"
+                  />
+                </label>
+                <button type="submit" className="btn btn-ghost btn-block">
+                  确认绑定
+                </button>
+              </>
+            ) : (
+              <>
+                {emailMessage ? <p className="flash flash--error">{emailMessage}</p> : null}
+                <button type="button" className="btn btn-ghost btn-block" onClick={onSendBindCode}>
+                  发送验证码
+                </button>
+              </>
+            )}
+            <button type="button" className="btn btn-ghost btn-block" onClick={resetEmailPanel}>
+              取消
             </button>
           </form>
         )}
-        {emailMessage ? <p className="flash">{emailMessage}</p> : null}
+      </section>
+      <section className="card">
         <button type="button" className="btn btn-ghost btn-block" onClick={onDeleteAccount}>
           注销账号
         </button>

@@ -263,4 +263,91 @@ describe("ProfilePage", () => {
     expect(screen.getByRole("button", { name: "缩小" })).toHaveTextContent("−");
     expect(screen.getByRole("button", { name: "放大" })).toHaveTextContent("+");
   });
+
+  it("shows bind-email entry only until the user opens the form", async () => {
+    stubAccountFetch(null);
+    renderProfile("/profile/account");
+    expect(await screen.findByRole("button", { name: "绑定邮箱" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("邮箱")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("验证码")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "发送验证码" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "修改密码" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "注销账号" })).toBeInTheDocument();
+  });
+
+  it("reveals bind code input only after sending code", async () => {
+    const fetchMock = stubAccountFetch(null);
+    const user = userEvent.setup();
+    renderProfile("/profile/account");
+    await user.click(await screen.findByRole("button", { name: "绑定邮箱" }));
+    expect(screen.getByLabelText("邮箱")).toBeInTheDocument();
+    expect(screen.queryByLabelText("验证码")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("邮箱"), "alice@example.com");
+    await user.click(screen.getByRole("button", { name: "发送验证码" }));
+    expect(await screen.findByText("验证码已发送，请查收邮箱")).toBeInTheDocument();
+    expect(screen.getByLabelText("验证码")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "确认绑定" })).toBeInTheDocument();
+    const sendCall = fetchMock.mock.calls.find(
+      (call) => call[1]?.method === "POST" && String(call[0]).includes("/email/sendCode"),
+    );
+    expect(JSON.parse(String(sendCall?.[1]?.body)).request).toEqual({
+      email: "alice@example.com",
+      purpose: "BIND",
+    });
+  });
+
+  it("confirms bind email with a dialog after code is filled", async () => {
+    stubAccountFetch(null);
+    const user = userEvent.setup();
+    renderProfile("/profile/account");
+    await user.click(await screen.findByRole("button", { name: "绑定邮箱" }));
+    await user.type(screen.getByLabelText("邮箱"), "alice@example.com");
+    await user.click(screen.getByRole("button", { name: "发送验证码" }));
+    await user.type(await screen.findByLabelText("验证码"), "1234");
+    await user.click(screen.getByRole("button", { name: "确认绑定" }));
+    expect(await screen.findByRole("dialog")).toHaveTextContent("确认将邮箱绑定为 alice@example.com");
+  });
+
+  it("shows unbind entry without code until unbind is opened", async () => {
+    stubAccountFetch("alice@example.com");
+    renderProfile("/profile/account");
+    expect(await screen.findByText("alice@example.com")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "解绑邮箱" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("验证码")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "绑定邮箱" })).not.toBeInTheDocument();
+  });
+
+  it("sends unbind code then asks for confirmation", async () => {
+    const fetchMock = stubAccountFetch("alice@example.com");
+    const user = userEvent.setup();
+    renderProfile("/profile/account");
+    await user.click(await screen.findByRole("button", { name: "解绑邮箱" }));
+    expect(await screen.findByText("验证码已发送，请查收邮箱")).toBeInTheDocument();
+    expect(screen.getByLabelText("验证码")).toBeInTheDocument();
+    const sendCall = fetchMock.mock.calls.find(
+      (call) => call[1]?.method === "POST" && String(call[0]).includes("/email/sendCode"),
+    );
+    expect(JSON.parse(String(sendCall?.[1]?.body)).request).toEqual({
+      email: "alice@example.com",
+      purpose: "UNBIND",
+    });
+    await user.type(screen.getByLabelText("验证码"), "4321");
+    await user.click(screen.getByRole("button", { name: "确认解绑" }));
+    expect(await screen.findByRole("dialog")).toHaveTextContent("确认解绑邮箱");
+  });
 });
+
+function stubAccountFetch(email: string | null) {
+  const fetchMock = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+    if (String(url).includes("/auth/me") && (!init?.method || init.method === "GET")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ code: 200, data: { username: "alice", email } }),
+      };
+    }
+    return { ok: true, status: 200, json: async () => ({ code: 200, data: {} }) };
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}

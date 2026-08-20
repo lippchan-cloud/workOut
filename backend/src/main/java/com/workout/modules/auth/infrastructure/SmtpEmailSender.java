@@ -8,7 +8,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 
 /**
  * 基于 SMTP 的验证码投递（基础设施层）。
- * 由 {@link com.workout.config.EmailSenderConfiguration} 在 JavaMailSender 就绪后注册；禁止把授权码写入日志。
+ * 由 {@link DefaultEmailSender} 在 JavaMailSender 就绪后委托调用；禁止把授权码写入日志。
  */
 public class SmtpEmailSender implements EmailSender {
 
@@ -29,24 +29,25 @@ public class SmtpEmailSender implements EmailSender {
     }
 
     /**
-     * 通过 SMTP 向目标邮箱投递 4 位数字验证码。
+     * 通过 SMTP 向目标邮箱投递带中文提示词的 4 位验证码邮件。
      *
      * @param email   规范化邮箱
      * @param purpose 用途标签（BIND/UNBIND/LOGIN）
-     * @param code    明文 4 位码，仅用于邮件正文
+     * @param code    明文 4 位码，仅用于邮件正文，禁止写入 INFO
      */
     @Override
     public void sendVerificationCode(String email, String purpose, String code) {
         long startMs = System.currentTimeMillis();
         // 关键入口：脱敏邮箱与用途，禁止打印授权码或验证码
-        log.info("[邮箱验证码] smtp sendVerificationCode start purpose={}, email={}, from={}",
-                purpose, mask(email), mask(fromAddress));
+        log.info("[邮箱验证码] smtp sendVerificationCode start purpose={}, email={}, from={}, subject={}",
+                purpose, mask(email), mask(fromAddress), VerificationEmailCopy.subject(purpose));
         SimpleMailMessage message = new SimpleMailMessage();
         // 163 要求 From 与登录账号一致
         message.setFrom(fromAddress);
         message.setTo(email);
-        message.setSubject("workOut 验证码");
-        message.setText(buildBody(purpose, code));
+        // 主题与正文使用中文提示词，避免邮件里只剩 4 位数字
+        message.setSubject(VerificationEmailCopy.subject(purpose));
+        message.setText(VerificationEmailCopy.body(purpose, code));
         try {
             // 经 SMTP 投递验证码邮件
             mailSender.send(message);
@@ -58,13 +59,6 @@ public class SmtpEmailSender implements EmailSender {
         // 关键结果：投递成功与耗时（不打印验证码）
         log.info("[邮箱验证码] smtp sendVerificationCode done purpose={}, email={}, elapsedMs={}",
                 purpose, mask(email), System.currentTimeMillis() - startMs);
-    }
-
-    /**
-     * 组装邮件正文（含明文验证码，仅出现在邮件中）。
-     */
-    private String buildBody(String purpose, String code) {
-        return "您的 workOut 验证码是 " + code + "，10 分钟内有效。用途：" + purpose + "。如非本人操作请忽略。";
     }
 
     /**

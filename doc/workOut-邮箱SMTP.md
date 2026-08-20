@@ -104,7 +104,7 @@ docker run --rm -p 8080:8080 \
 
 - 授权码只用于 SMTP 客户端登录，**不是** 163 账号登录密码；泄露后应在邮箱设置里重置授权码。
 - 默认值仅适合 **私有仓库**（与 DB 密码写入 `application.yml` 同一风格）。**不要**推到公开仓或粘贴到公开聊天/工单。
-- 应用日志对邮箱脱敏；SMTP 实现 **不** 把授权码或验证码打进成功日志（日志回落模式为联调会打印验证码）。
+- 应用日志对邮箱脱敏；SMTP 与日志回落的 INFO **不** 打印授权码或完整验证码（日志模式明文正文仅 DEBUG）。
 
 ---
 
@@ -112,6 +112,6 @@ docker run --rm -p 8080:8080 \
 
 1. 启动后端后，在「我的 → 账号安全」发起绑定（或调用 `POST /api/v1/auth/email/sendCode`）。
 2. 日志中搜索 `[邮箱验证码]`：应出现 `route smtp` 与 `smtp sendVerificationCode start/done`（若仍是 `route logging` / `logging ... delivered`，说明未加载 `JavaMailSender`，请确认已配 `spring.mail.host` 并重启）。
-3. 目标邮箱应收到主题为「workOut 验证码」的邮件，正文含 4 位数字码；也请检查垃圾箱。用该码完成绑定/登录/解绑。
+3. 目标邮箱应收到中文主题（如「workOut 绑定邮箱验证码」）与提示正文（含 4 位数字码、10 分钟有效）；也请检查垃圾箱。用该码完成绑定/登录/解绑。前端发码成功会提示「验证码已发送，请查收邮箱」。
 
 集成测试使用 `CapturingEmailSender`（`@Primary` + `test` profile），不发真实邮件。
