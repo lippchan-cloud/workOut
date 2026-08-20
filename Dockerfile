@@ -15,6 +15,8 @@ RUN npm run build
 # —— Stage 2: Maven 打包（含静态资源）——
 FROM maven:3.9-eclipse-temurin-17 AS backend
 WORKDIR /build/backend
+# 阿里云 Maven 镜像，加速 Docker 构建依赖下载
+COPY backend/docker/maven-settings.xml /root/.m2/settings.xml
 COPY backend/pom.xml ./
 RUN mvn -q -B dependency:go-offline
 COPY backend/src ./src
