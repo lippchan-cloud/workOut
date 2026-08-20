@@ -37,6 +37,53 @@ body {
     linear-gradient(165deg, var(--bg0), #122028 45%, #0c161c);
 }
 
+.more-link {
+  position: fixed;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg2) 88%, transparent);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.more-link:hover,
+.more-link:focus-visible {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--bg2) 70%, var(--accent-dim) 12%);
+  outline: none;
+}
+
+.more-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .more-link {
+    top: 0.65rem;
+    right: 0.65rem;
+    min-height: 2.1rem;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.85rem;
+  }
+}
+
 .page {
   width: min(920px, calc(100% - 2rem));
   margin: 0 auto;

@@ -2,6 +2,11 @@ import { lookupFares } from "./fare.js";
 
 const $ = (sel) => document.querySelector(sel);
 
+const moreLink = $("#moreLink");
+if (moreLink) {
+  moreLink.href = `http://${location.hostname}:18080/`;
+}
+
 const state = {
   network: null,
   graph: null,
