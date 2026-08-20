@@ -1,0 +1,236 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap");
+
+:root {
+  --bg0: #0f1c24;
+  --bg1: #162832;
+  --bg2: #1e3542;
+  --ink: #e8f1f4;
+  --muted: #8aa3ae;
+  --line: #2c4a58;
+  --accent: #3db8a8;
+  --accent-dim: #2a7f74;
+  --warn: #e2a35a;
+  --card: #1a2f3a;
+  --current: #7eb6c9;
+  --s1: #e2a35a;
+  --s2: #c97bb0;
+  --radius: 14px;
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Noto Sans SC", system-ui, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #1d4a4a 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #3a2a4a 0%, transparent 50%),
+    linear-gradient(165deg, var(--bg0), #122028 45%, #0c161c);
+}
+
+.page {
+  width: min(920px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2.5rem 0 3.5rem;
+}
+
+.hero {
+  margin-bottom: 1.75rem;
+}
+
+.hero h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.6rem, 4vw, 2.15rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hero p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 42rem;
+}
+
+.panel {
+  background: color-mix(in srgb, var(--card) 92%, white 2%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.leg {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border-radius: 12px;
+  background: var(--bg1);
+  border: 1px solid var(--line);
+}
+
+.leg h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+select {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--bg2);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+}
+
+select:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  border-color: var(--accent-dim);
+}
+
+.swap-row {
+  display: flex;
+  justify-content: center;
+  margin: 0.85rem 0 0;
+}
+
+button.swap {
+  border: 1px solid var(--line);
+  background: var(--bg2);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+button.swap:hover {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.results {
+  margin-top: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.km-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: baseline;
+}
+
+.km-line strong {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 1.6rem;
+  color: var(--accent);
+}
+
+.fares {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .fares {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fare-card {
+  border-radius: 12px;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--line);
+  background: var(--bg1);
+}
+
+.fare-card .tag {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.fare-card .price {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 1.75rem;
+  font-weight: 500;
+}
+
+.fare-card .delta {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.fare-card.current .price {
+  color: var(--current);
+}
+.fare-card.s1 .price {
+  color: var(--s1);
+}
+.fare-card.s2 .price {
+  color: var(--s2);
+}
+
+.path-box {
+  border-radius: 12px;
+  border: 1px dashed var(--line);
+  padding: 0.9rem 1rem;
+  background: color-mix(in srgb, var(--bg0) 40%, transparent);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.disclaimer {
+  margin-top: 1.25rem;
+  padding: 0.85rem 1rem;
+  border-left: 3px solid var(--warn);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  border-radius: 0 10px 10px 0;
+}
+
+.error {
+  color: #f0a0a0;
+}

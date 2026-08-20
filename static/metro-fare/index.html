@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>上海地铁调价对照</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <h1>上海地铁调价对照</h1>
+        <p>
+          按线路选择起点与终点，估算最短乘距，对照现行票价与听证方案一 / 方案二。
+          路网来自高德地铁公开数据，区间公里为站点坐标推算。
+        </p>
+      </header>
+
+      <section class="panel">
+        <div class="grid">
+          <div class="leg">
+            <h2>起点</h2>
+            <label>
+              线路
+              <select id="fromLine"></select>
+            </label>
+            <label>
+              车站
+              <select id="fromStation"></select>
+            </label>
+          </div>
+          <div class="leg">
+            <h2>终点</h2>
+            <label>
+              线路
+              <select id="toLine"></select>
+            </label>
+            <label>
+              车站
+              <select id="toStation"></select>
+            </label>
+          </div>
+        </div>
+        <div class="swap-row">
+          <button type="button" class="swap" id="swapBtn">交换起终点</button>
+        </div>
+
+        <div class="results" id="results">
+          <p class="muted">加载路网中…</p>
+        </div>
+      </section>
+
+      <aside class="disclaimer">
+        乘距与票价均为估算，仅供对照 2026 年票价机制听证方案，不代表正式计费结果。
+        不含磁浮线、浦江线、市域机场线。票价规则依据市发改委公开听证方案公式计算。
+      </aside>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
